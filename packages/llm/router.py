@@ -33,8 +33,8 @@ class ModelRouter:
         provider, model = name.split("/", 1)
         provider = provider.lower()
 
+        config = self._settings.get(provider)
         if provider not in self._clients:
-            config = self._settings.get(provider)
             if not config.is_configured:
                 raise ConfigError(
                     f"Provider '{provider}' is not configured; "
@@ -45,6 +45,11 @@ class ModelRouter:
                 base_url=config.endpoint,
                 timeout=self._settings.timeout,
             )
+
+        # Azure v1 API: the model field carries the deployment name, so fall
+        # back to AZURE_OPENAI_DEPLOYMENT when no model is given.
+        if not model and config.deployment:
+            model = config.deployment
         return self._clients[provider], model
 
     def chat(self, name: str, messages: list[ChatMessage | dict], **kwargs) -> ChatResponse:

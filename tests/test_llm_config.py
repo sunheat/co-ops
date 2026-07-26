@@ -64,7 +64,7 @@ def test_openai_base_url_default():
 
 
 def test_azure_endpoint_composition():
-    """Azure endpoint includes the deployment path."""
+    """Azure endpoint targets the v1 OpenAI-compatible API (/openai/v1)."""
     settings = load_settings(env={
         "AZURE_OPENAI_API_KEY": "k",
         "AZURE_OPENAI_ENDPOINT": "https://myres.openai.azure.com/",
@@ -72,11 +72,22 @@ def test_azure_endpoint_composition():
     })
     azure = settings.get("azure")
     assert azure.is_configured
-    assert azure.endpoint == "https://myres.openai.azure.com/openai/deployments/gpt-4o"
+    assert azure.endpoint == "https://myres.openai.azure.com/openai/v1"
+    assert azure.deployment == "gpt-4o"
+
+
+def test_azure_endpoint_already_v1_suffixed():
+    """An endpoint already ending in /openai/v1 is not double-suffixed."""
+    config = ProviderConfig(
+        name="azure",
+        api_key="k",
+        base_url="https://myres.openai.azure.com/openai/v1/",
+    )
+    assert config.endpoint == "https://myres.openai.azure.com/openai/v1"
 
 
 def test_azure_incomplete_is_not_configured():
-    """Azure requires key + endpoint + deployment to be usable."""
+    """Azure requires key + endpoint to be usable (deployment is optional)."""
     settings = load_settings(env={"AZURE_OPENAI_API_KEY": "k"})
     azure = settings.get("azure")
     assert not azure.is_configured

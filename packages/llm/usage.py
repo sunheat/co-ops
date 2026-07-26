@@ -27,8 +27,11 @@ class UsageTracker:
         self.calls = 0
 
     def record(self, usage: Usage | None) -> None:
-        """Record usage from a single completion. None values are ignored."""
+        """Record a completed call. Token totals are only updated when usage
+        is present (some providers/proxies omit usage stats), but the call
+        itself always counts.
+        """
+        self.calls += 1
         if usage is None:
             return
         self.total = self.total + usage
-        self.calls += 1

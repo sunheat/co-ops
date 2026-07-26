@@ -1,5 +1,7 @@
 """Universal OpenAI-compatible LLM client."""
 
+import atexit
+import threading
 import time
 
 import httpx
@@ -14,7 +16,8 @@ class LLMClient:
 
     Works with any OpenAI-compatible endpoint:
     - OpenAI: base_url="https://api.openai.com/v1"
-    - Azure OpenAI: base_url="https://<resource>.openai.azure.com/openai/deployments/<deployment>"
+    - Azure OpenAI: base_url="https://<resource>.openai.azure.com/openai/v1"
+      (v1 API: the deployment name goes in the model field)
     - OpenRouter: base_url="https://openrouter.ai/api/v1"
     - Gemini: base_url="https://generativelanguage.googleapis.com/v1beta/openai"
     - DeepSeek: base_url="https://api.deepseek.com/v1"
@@ -189,6 +192,35 @@ class LLMClient:
 
 
 _default_router = None
+_default_router_lock = threading.Lock()
+
+
+def _get_default_router():
+    """Return the shared ModelRouter, creating it on first use (thread-safe)."""
+    global _default_router
+    if _default_router is None:
+        with _default_router_lock:
+            if _default_router is None:
+                from .router import ModelRouter
+
+                _default_router = ModelRouter()
+    return _default_router
+
+
+def close_default_router() -> None:
+    """Close the shared router (and its clients) and reset it.
+
+    Registered via atexit; safe to call manually and multiple times.
+    The next llm.chat() call will lazily create a fresh router.
+    """
+    global _default_router
+    with _default_router_lock:
+        if _default_router is not None:
+            _default_router.close()
+            _default_router = None
+
+
+atexit.register(close_default_router)
 
 
 def chat(
@@ -215,13 +247,7 @@ def chat(
         )
         print(response.content, response.total_tokens, response.latency_ms)
     """
-    from .router import ModelRouter
-
-    global _default_router
-    if _default_router is None:
-        _default_router = ModelRouter()
-
-    response = _default_router.chat(
+    response = _get_default_router().chat(
         f"{provider}/{model}", messages, temperature=temperature, **kwargs
     )
     return LLMResponse.from_chat_response(response, provider=provider.lower())

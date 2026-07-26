@@ -30,7 +30,7 @@ class ProviderConfig:
     name: str
     api_key: str | None = field(default=None, repr=False)
     base_url: str | None = None
-    deployment: str | None = None  # Azure OpenAI deployment name
+    deployment: str | None = None  # Azure OpenAI deployment name (pass it as the model)
 
     @property
     def is_configured(self) -> bool:
@@ -38,16 +38,24 @@ class ProviderConfig:
         if self.name == "local":
             return bool(self.base_url)
         if self.name == "azure":
-            return bool(self.api_key and self.base_url and self.deployment)
+            return bool(self.api_key and self.base_url)
         return bool(self.api_key)
 
     @property
     def endpoint(self) -> str | None:
-        """Final base URL to send requests to (Azure composes the deployment path)."""
+        """Final base URL to send requests to.
+
+        Azure's v1 OpenAI-compatible API expects the base URL to end in
+        /openai/v1, with the deployment name passed via the model field
+        (https://learn.microsoft.com/en-us/azure/foundry/openai/api-version-lifecycle).
+        """
         if self.name == "azure":
-            if not (self.base_url and self.deployment):
+            if not self.base_url:
                 return None
-            return f"{self.base_url.rstrip('/')}/openai/deployments/{self.deployment}"
+            base = self.base_url.rstrip("/")
+            if base.endswith("/openai/v1"):
+                return base
+            return f"{base}/openai/v1"
         return self.base_url
 
 

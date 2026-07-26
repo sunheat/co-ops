@@ -1,6 +1,6 @@
 """Universal LLM client package."""
 
-from .client import LLMClient, chat
+from .client import LLMClient, chat, close_default_router
 from .config import ProviderConfig, LLMSettings, load_settings
 from .router import ModelRouter
 from .schemas import ChatMessage, ChatChoice, ChatResponse, LLMResponse
@@ -17,6 +17,7 @@ from .errors import (
 
 __all__ = [
     "chat",
+    "close_default_router",
     "LLMClient",
     "ProviderConfig",
     "LLMSettings",
