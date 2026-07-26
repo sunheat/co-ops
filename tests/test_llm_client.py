@@ -85,6 +85,54 @@ def test_client_base_url_trailing_slash():
     client.close()
 
 
+def _client_with_error_response(status_code: int, json_body):
+    """Build an LLMClient whose transport always returns the given error."""
+    import httpx
+
+    def handler(request):
+        return httpx.Response(status_code, json=json_body)
+
+    client = LLMClient(base_url="http://testserver/v1")
+    client._client = httpx.Client(
+        base_url="http://testserver/v1", transport=httpx.MockTransport(handler)
+    )
+    return client
+
+
+def test_api_error_openai_style_body():
+    """OpenAI-style {"error": {"message": ...}} bodies keep working."""
+    with _client_with_error_response(
+        500, {"error": {"message": "server exploded", "type": "server_error"}}
+    ) as client:
+        with pytest.raises(APIError) as exc_info:
+            client.chat(model="m", messages=[{"role": "user", "content": "hi"}])
+    assert "server exploded" in str(exc_info.value)
+    assert exc_info.value.status_code == 500
+
+
+def test_api_error_string_error_body():
+    """Ollama-style {"error": "..."} bodies raise APIError, not AttributeError."""
+    with _client_with_error_response(
+        404, {"error": "model 'nope' not found, try pulling it first"}
+    ) as client:
+        with pytest.raises(APIError) as exc_info:
+            client.chat(model="nope", messages=[{"role": "user", "content": "hi"}])
+    assert "model 'nope' not found" in str(exc_info.value)
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.body == {
+        "error": "model 'nope' not found, try pulling it first"
+    }
+
+
+def test_api_error_non_dict_body():
+    """A bare-string JSON error body is normalized into APIError.body as a dict."""
+    with _client_with_error_response(502, "bad gateway") as client:
+        with pytest.raises(APIError) as exc_info:
+            client.chat(model="m", messages=[{"role": "user", "content": "hi"}])
+    assert "bad gateway" in str(exc_info.value)
+    assert exc_info.value.body == {"error": "bad gateway"}
+
+
 def test_rooted_request_path_preserves_base_url_path():
     """A rooted request path must not discard path segments in base_url.
 

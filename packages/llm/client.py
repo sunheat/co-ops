@@ -130,7 +130,9 @@ class LLMClient:
                 error_body = response.json()
             except Exception:
                 error_body = {}
-            error_msg = error_body.get("error", {}).get("message", response.text)
+            error_msg = self._extract_error_message(error_body) or response.text
+            if not isinstance(error_body, dict):
+                error_body = {"error": error_body}
             raise APIError(
                 f"API error: {error_msg}",
                 status_code=response.status_code,
@@ -143,6 +145,26 @@ class LLMClient:
             raise APIError(f"Failed to parse response: {e}") from e
 
         return self._parse_response(data, latency_ms=latency_ms)
+
+    @staticmethod
+    def _extract_error_message(error_body) -> str | None:
+        """Pull a human-readable message out of an error payload.
+
+        Handles both OpenAI-style ({"error": {"message": ...}}) and
+        Ollama/proxy-style ({"error": "..."}) bodies, plus non-dict payloads.
+        """
+        if not isinstance(error_body, dict):
+            return str(error_body) if error_body else None
+        error = error_body.get("error")
+        if isinstance(error, dict):
+            message = error.get("message")
+            return message if isinstance(message, str) and message else None
+        if isinstance(error, str) and error:
+            return error
+        message = error_body.get("message")
+        if isinstance(message, str) and message:
+            return message
+        return None
 
     def _parse_response(self, data: dict, latency_ms: float | None = None) -> ChatResponse:
         """Parse the raw API response into a ChatResponse object."""

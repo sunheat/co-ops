@@ -23,9 +23,9 @@ cp .env.example .env
 # 2. 运行测试
 uv run pytest tests/ -v
 
-# 3. 运行示例
-uv run python examples/chat_basic.py
-uv run python examples/compare_models.py
+# 3. 运行示例（-m 保证仓库根目录在 sys.path，--env-file 加载 .env）
+uv run --env-file .env python -m examples.chat_basic
+uv run --env-file .env python -m examples.compare_models
 ```
 
 ## 本周产出

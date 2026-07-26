@@ -26,5 +26,5 @@ co-ops/
 ```bash
 cp .env.example .env      # fill in your API keys
 uv run pytest tests/ -v   # run tests
-uv run python examples/chat_basic.py
+uv run --env-file .env python -m examples.chat_basic
 ```

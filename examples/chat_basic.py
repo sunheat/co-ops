@@ -5,7 +5,7 @@ Usage:
     #   LOCAL_LLM_BASE_URL=http://localhost:11434/v1
     #   LLM_PROVIDER=local
     #   LLM_MODEL=qwen2.5
-    python examples/chat_basic.py
+    uv run --env-file .env python -m examples.chat_basic
 """
 
 import os

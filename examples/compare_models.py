@@ -4,7 +4,7 @@ Usage:
     # Set API keys for the providers you want to compare, e.g.:
     #   OPENAI_API_KEY=sk-...
     #   DEEPSEEK_API_KEY=sk-...
-    python examples/compare_models.py
+    uv run --env-file .env python -m examples.compare_models
 """
 
 from packages.llm import ChatMessage, LLMError, ModelRouter, UsageTracker
