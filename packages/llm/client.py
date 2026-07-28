@@ -126,10 +126,16 @@ class LLMClient:
         if response.status_code == 429:
             raise RateLimitError("Rate limit exceeded")
         if response.status_code >= 400:
+            # Keep the provider's body untouched for observation; normalize a
+            # copy to dict so downstream .body handling stays uniform.
             try:
                 error_body = response.json()
+                raw_body = error_body
             except Exception:
+                # Non-JSON body (HTML/plain-text 502 from a proxy, etc.):
+                # keep the raw text for observation, normalize body to {}.
                 error_body = {}
+                raw_body = response.text
             error_msg = self._extract_error_message(error_body) or response.text
             if not isinstance(error_body, dict):
                 error_body = {"error": error_body}
@@ -137,6 +143,7 @@ class LLMClient:
                 f"API error: {error_msg}",
                 status_code=response.status_code,
                 body=error_body,
+                raw_body=raw_body,
             )
 
         try:
