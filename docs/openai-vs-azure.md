@@ -64,7 +64,11 @@ v1 GA 之后认证也统一成标准 Bearer，`LLMClient` 里不需要为 Azure 
   OpenAI 的别名（如 `gpt-4o`）由官方随时指到新快照。
 - **内容过滤**：Azure 默认启用 content filter，可能返回 OpenAI 不会有的
   `content_filter` finish_reason 或 400 错误。
-- **数据边界**：Azure 承诺请求数据不出所选区域、不用于训练，这是企业选 Azure 的主因。
+- **数据边界**：Azure 承诺请求数据不用于训练（对所有部署类型都成立），这是企业选 Azure 的主因。
+  <small>注：「数据不出所选区域」只对 Standard（区域）部署成立——Global 部署的 prompt/completion
+  可能在资源区域之外处理，Data Zone 部署则是限定在一个地理分区（如 EU/US）而非单一 region；
+  做合规决策时要按部署类型区分。另按作者实际使用经验，手上订阅的 Global 部署 TPM 配额很低，
+  agent 场景基本不够用（官方文档称 Global Standard 默认配额最高，实际额度以自己订阅为准）。</small>
 
 ## 验证方式
 

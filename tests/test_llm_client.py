@@ -152,6 +152,25 @@ def test_api_error_dict_body_raw_body_matches():
     assert exc_info.value.raw_body == exc_info.value.body == body
 
 
+def test_api_error_non_json_body_text_preserved_in_raw_body():
+    """HTML/plain-text error bodies (e.g. proxy 502 pages) keep their text in raw_body."""
+    import httpx
+
+    def handler(request):
+        return httpx.Response(502, text="<html>502 Bad Gateway</html>")
+
+    client = LLMClient(base_url="http://testserver/v1")
+    client._client = httpx.Client(
+        base_url="http://testserver/v1", transport=httpx.MockTransport(handler)
+    )
+    with client:
+        with pytest.raises(APIError) as exc_info:
+            client.chat(model="m", messages=[{"role": "user", "content": "hi"}])
+    assert "502 Bad Gateway" in str(exc_info.value)
+    assert exc_info.value.body == {}  # nothing structured to normalize
+    assert exc_info.value.raw_body == "<html>502 Bad Gateway</html>"
+
+
 def test_rooted_request_path_preserves_base_url_path():
     """A rooted request path must not discard path segments in base_url.
 
