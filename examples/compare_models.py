@@ -25,9 +25,11 @@ import json
 
 from packages.llm import (
     APIError,
+    AuthenticationError,
     ChatMessage,
     LLMError,
     ModelRouter,
+    RateLimitError,
     UsageTracker,
     load_settings,
 )
@@ -42,6 +44,10 @@ MODELS = {
     # OpenRouter free tier: models with a ":free" suffix. gpt-oss-20b is stable.
     "openrouter": "openai/gpt-oss-20b:free",
     "openai": "gpt-4o-mini",
+    # Azure: the "model" field is the *deployment name*, not a public model name.
+    # "" makes us read it from AZURE_OPENAI_DEPLOYMENT at runtime so an
+    # Azure-only environment is observed instead of silently skipped.
+    "azure": "",
     "deepseek": "deepseek-chat",
     "local": "qwen2.5",
 }
@@ -61,6 +67,18 @@ def _dump(obj) -> str:
 
 def _indent(text: str, prefix: str = "    ") -> str:
     return "\n".join(prefix + line for line in text.splitlines())
+
+
+def _effective_model(settings, provider: str, model: str) -> str:
+    """Resolve the model name to send for a provider.
+
+    Azure OpenAI passes the *deployment name* (not a public model name) in the
+    "model" field, so when MODELS leaves it blank we read it from the resolved
+    AZURE_OPENAI_DEPLOYMENT config.
+    """
+    if provider == "azure" and not model:
+        return settings.get(provider).deployment or ""
+    return model
 
 
 def observe_request_schema(model: str) -> None:
@@ -84,8 +102,11 @@ def observe_response(router: ModelRouter, provider: str, model: str, tracker: Us
     response = router.chat(f"{provider}/{model}", messages, temperature=0.7)
     tracker.record(response.usage)
 
-    answer = response.content.strip().replace("\n", " ")
-    print(f"  [response] answer: {answer[:200]}")
+    # Some providers return an explicit null content (e.g. reasoning models
+    # that put everything in a reasoning field); normalize before str methods
+    # so usage inspection and later providers still run.
+    answer = (response.content or "").strip().replace("\n", " ")
+    print(f"  [response] answer: {answer[:200] if answer else '(empty or null content)'}")
     latency = f"{response.latency_ms:.0f} ms" if response.latency_ms is not None else "n/a"
     print(f"  [response] echoed model: {response.model!r} | latency: {latency}")
     print(f"  [response] top-level keys: {sorted(response.raw.keys())}")
@@ -100,6 +121,24 @@ def observe_response(router: ModelRouter, provider: str, model: str, tracker: Us
     verdict = "all OpenAI fields present" if not missing else f"MISSING: {', '.join(missing)}"
     extra = [k for k in raw_usage if k not in OPENAI_USAGE_FIELDS]
     print(f"  [usage] {verdict}" + (f" | extra keys: {extra}" if extra else ""))
+
+
+def _should_probe_errors(failure: LLMError | None) -> bool:
+    """Decide whether the deliberate bad-model probe is worth firing.
+
+    Transport failures (APIError without an HTTP status), bad credentials and
+    rate limiting affect *every* request, so the probe would only repeat the
+    same failure -- and an unreachable endpoint would stall the script for a
+    second 60 s timeout. HTTP errors tied to the model itself (e.g. 404) still
+    leave the endpoint responsive, so probing remains informative.
+    """
+    if failure is None:
+        return True
+    if isinstance(failure, (AuthenticationError, RateLimitError)):
+        return False
+    if isinstance(failure, APIError) and failure.status_code is None:
+        return False
+    return True
 
 
 def observe_error(router: ModelRouter, provider: str) -> None:
@@ -123,18 +162,24 @@ def main() -> None:
 
     with ModelRouter(settings) as router:
         for provider, model in MODELS.items():
-            print(f"\n{'=' * 64}\n{provider} / {model}\n{'=' * 64}")
+            model = _effective_model(settings, provider, model)
+            print(f"\n{'=' * 64}\n{provider} / {model or '(no deployment set)'}\n{'=' * 64}")
 
             if not settings.get(provider).is_configured:
                 print("  [skipped] not configured -- set its key/base_url in .env")
                 continue
 
             observe_request_schema(model)
+            failure: LLMError | None = None
             try:
                 observe_response(router, provider, model, tracker)
             except LLMError as e:
+                failure = e
                 print(f"  [response] chat failed: {type(e).__name__}: {e}")
-            observe_error(router, provider)
+            if _should_probe_errors(failure):
+                observe_error(router, provider)
+            else:
+                print("  [error] skipped -- provider unusable, probe would repeat the same failure")
 
     print(f"\n{'=' * 64}")
     print(f"Total: {tracker.calls} calls, {tracker.total.total_tokens} tokens")
