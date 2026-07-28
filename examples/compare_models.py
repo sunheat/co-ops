@@ -172,6 +172,13 @@ def main() -> None:
                 print("  [skipped] not configured -- set its key/base_url in .env")
                 continue
 
+            # Azure counts as configured with just key + endpoint, but without a
+            # deployment name the resolved model is "" and both requests would
+            # only produce noise -- skip with a pointed message instead.
+            if not model:
+                print("  [skipped] no deployment name -- set AZURE_OPENAI_DEPLOYMENT in .env")
+                continue
+
             observe_request_schema(model)
             failure: LLMError | None = None
             try:
