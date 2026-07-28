@@ -133,6 +133,25 @@ def test_api_error_non_dict_body():
     assert exc_info.value.body == {"error": "bad gateway"}
 
 
+def test_api_error_array_body_preserved_in_raw_body():
+    """Gemini-style top-level [...] error bodies survive untouched in raw_body."""
+    gemini_body = [{"error": {"code": 404, "message": "not found", "status": "NOT_FOUND"}}]
+    with _client_with_error_response(404, gemini_body) as client:
+        with pytest.raises(APIError) as exc_info:
+            client.chat(model="m", messages=[{"role": "user", "content": "hi"}])
+    assert exc_info.value.body == {"error": gemini_body}  # normalized for uniform handling
+    assert exc_info.value.raw_body == gemini_body  # provider's shape preserved
+
+
+def test_api_error_dict_body_raw_body_matches():
+    """For already-dict bodies, raw_body and body are the same object."""
+    body = {"error": {"message": "nope", "type": "invalid_request_error"}}
+    with _client_with_error_response(400, body) as client:
+        with pytest.raises(APIError) as exc_info:
+            client.chat(model="m", messages=[{"role": "user", "content": "hi"}])
+    assert exc_info.value.raw_body == exc_info.value.body == body
+
+
 def test_rooted_request_path_preserves_base_url_path():
     """A rooted request path must not discard path segments in base_url.
 

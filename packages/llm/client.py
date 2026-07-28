@@ -131,12 +131,16 @@ class LLMClient:
             except Exception:
                 error_body = {}
             error_msg = self._extract_error_message(error_body) or response.text
+            # Keep the provider's body untouched for observation; normalize a
+            # copy to dict so downstream .body handling stays uniform.
+            raw_body = error_body
             if not isinstance(error_body, dict):
                 error_body = {"error": error_body}
             raise APIError(
                 f"API error: {error_msg}",
                 status_code=response.status_code,
                 body=error_body,
+                raw_body=raw_body,
             )
 
         try:

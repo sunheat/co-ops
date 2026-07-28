@@ -148,8 +148,11 @@ def observe_error(router: ModelRouter, provider: str) -> None:
         router.chat(f"{provider}/{BAD_MODEL}", [ChatMessage(role="user", content="hi")])
     except APIError as e:
         print(f"  [error] APIError status={e.status_code}")
+        # raw_body is the provider's response before LLMClient normalizes
+        # non-dict bodies (e.g. Gemini's top-level [...] array) into a dict --
+        # exactly the incompatibility this script wants to expose.
         print("  [error] raw body:")
-        print(_indent(_dump(e.body)))
+        print(_indent(_dump(e.raw_body)))
     except LLMError as e:
         print(f"  [error] {type(e).__name__}: {e}")
     else:
