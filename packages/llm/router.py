@@ -4,6 +4,7 @@ from .client import LLMClient
 from .config import LLMSettings, load_settings
 from .errors import ConfigError
 from .schemas import ChatMessage, ChatResponse
+from .usage import UsageLogger
 
 
 class ModelRouter:
@@ -23,6 +24,11 @@ class ModelRouter:
     def __init__(self, settings: LLMSettings | None = None):
         self._settings = settings if settings is not None else load_settings()
         self._clients: dict[str, LLMClient] = {}
+        self._usage_logger = (
+            UsageLogger(self._settings.usage_log_path)
+            if self._settings.usage_log_path
+            else None
+        )
 
     def _resolve(self, name: str) -> tuple[LLMClient, str]:
         """Split "provider/model" and return (client, model)."""
@@ -44,6 +50,10 @@ class ModelRouter:
                 api_key=config.api_key,
                 base_url=config.endpoint,
                 timeout=self._settings.timeout,
+                provider=provider,
+                max_retries=self._settings.max_retries,
+                retry_base_delay=self._settings.retry_base_delay,
+                usage_logger=self._usage_logger,
             )
 
         # Azure v1 API: the model field carries the deployment name, so fall
@@ -52,7 +62,9 @@ class ModelRouter:
             model = config.deployment
         return self._clients[provider], model
 
-    def chat(self, name: str, messages: list[ChatMessage | dict], **kwargs) -> ChatResponse:
+    def chat(
+        self, name: str, messages: list[ChatMessage | dict], **kwargs
+    ) -> ChatResponse:
         """Send a chat request to the provider encoded in the model name."""
         client, model = self._resolve(name)
         return client.chat(model=model, messages=messages, **kwargs)

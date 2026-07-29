@@ -1,0 +1,2 @@
+{"provider":"openai","model":"gpt-4o-mini","prompt_tokens":123,"completion_tokens":45,"total_tokens":168,"latency_ms":920.0,"estimated_cost_usd":0.00004545,"status":"success","attempts":1,"error_type":null}
+{"provider":"openai","model":"gpt-4o-mini","prompt_tokens":0,"completion_tokens":0,"total_tokens":0,"latency_ms":2150.4,"estimated_cost_usd":null,"status":"error","attempts":3,"error_type":"LLMTimeoutError"}

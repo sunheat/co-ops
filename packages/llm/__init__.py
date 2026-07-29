@@ -1,41 +1,60 @@
 """Universal LLM client package."""
 
 from .client import LLMClient, chat, close_default_router
-from .config import ProviderConfig, LLMSettings, load_settings
-from .router import ModelRouter
-from .schemas import ChatMessage, ChatChoice, ChatResponse, LLMResponse
-from .usage import Usage, UsageTracker
-from .providers import Provider, PROVIDERS, get_provider
+from .config import LLMSettings, ProviderConfig, load_settings
 from .errors import (
-    LLMError,
-    AuthenticationError,
-    RateLimitError,
     APIError,
+    AuthenticationError,
     ConfigError,
+    InvalidResponseError,
+    LLMConnectionError,
+    LLMError,
+    LLMTimeoutError,
+    RateLimitError,
     UnknownProviderError,
+)
+from .providers import PROVIDERS, Provider, get_provider
+from .router import ModelRouter
+from .schemas import ChatChoice, ChatMessage, ChatResponse, LLMResponse
+from .usage import (
+    PRICE_TABLE,
+    ModelPrice,
+    Usage,
+    UsageLogEntry,
+    UsageLogger,
+    UsageTracker,
+    estimate_cost_usd,
 )
 
 __all__ = [
+    "PRICE_TABLE",
+    "PROVIDERS",
+    "APIError",
+    "AuthenticationError",
+    "ChatChoice",
+    "ChatMessage",
+    "ChatResponse",
+    "ConfigError",
+    "InvalidResponseError",
+    "LLMClient",
+    "LLMConnectionError",
+    "LLMError",
+    "LLMResponse",
+    "LLMSettings",
+    "LLMTimeoutError",
+    "ModelPrice",
+    "ModelRouter",
+    "Provider",
+    "ProviderConfig",
+    "RateLimitError",
+    "UnknownProviderError",
+    "Usage",
+    "UsageLogEntry",
+    "UsageLogger",
+    "UsageTracker",
     "chat",
     "close_default_router",
-    "LLMClient",
-    "ProviderConfig",
-    "LLMSettings",
-    "load_settings",
-    "ModelRouter",
-    "ChatMessage",
-    "ChatChoice",
-    "ChatResponse",
-    "LLMResponse",
-    "Usage",
-    "UsageTracker",
-    "Provider",
-    "PROVIDERS",
+    "estimate_cost_usd",
     "get_provider",
-    "LLMError",
-    "AuthenticationError",
-    "RateLimitError",
-    "APIError",
-    "ConfigError",
-    "UnknownProviderError",
+    "load_settings",
 ]

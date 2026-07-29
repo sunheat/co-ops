@@ -5,7 +5,6 @@ from typing import Literal
 
 from .usage import Usage
 
-
 Role = Literal["system", "user", "assistant"]
 
 
@@ -38,6 +37,8 @@ class ChatResponse:
     choices: list[ChatChoice]
     usage: Usage | None = None
     latency_ms: float | None = None
+    estimated_cost_usd: float | None = None
+    attempts: int = 1
     raw: dict = field(default_factory=dict, repr=False)
 
     @property
@@ -66,6 +67,8 @@ class LLMResponse:
     completion_tokens: int = 0
     total_tokens: int = 0
     latency_ms: float | None = None
+    estimated_cost_usd: float | None = None
+    attempts: int = 1
     raw: dict = field(default_factory=dict, repr=False)
 
     @classmethod
@@ -80,5 +83,7 @@ class LLMResponse:
             completion_tokens=usage.completion_tokens if usage else 0,
             total_tokens=usage.total_tokens if usage else 0,
             latency_ms=response.latency_ms,
+            estimated_cost_usd=response.estimated_cost_usd,
+            attempts=response.attempts,
             raw=response.raw,
         )

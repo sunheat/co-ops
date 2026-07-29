@@ -1,13 +1,33 @@
 """Universal OpenAI-compatible LLM client."""
 
 import atexit
+import logging
 import threading
 import time
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
+from math import isfinite
 
 import httpx
-from .schemas import ChatMessage, ChatChoice, ChatResponse, LLMResponse
-from .usage import Usage
-from .errors import AuthenticationError, RateLimitError, APIError
+
+from .errors import (
+    APIError,
+    AuthenticationError,
+    InvalidResponseError,
+    LLMConnectionError,
+    LLMError,
+    LLMTimeoutError,
+    RateLimitError,
+)
+from .schemas import ChatChoice, ChatMessage, ChatResponse, LLMResponse
+from .usage import (
+    Usage,
+    UsageLogEntry,
+    UsageLogger,
+    estimate_cost_usd,
+)
+
+logger = logging.getLogger(__name__)
 
 
 class LLMClient:
@@ -39,6 +59,10 @@ class LLMClient:
         base_url: str = "https://api.openai.com/v1",
         timeout: float = 60.0,
         default_headers: dict[str, str] | None = None,
+        provider: str = "unknown",
+        max_retries: int = 2,
+        retry_base_delay: float = 0.5,
+        usage_logger: UsageLogger | None = None,
     ):
         """
         Initialize the LLM client.
@@ -48,10 +72,27 @@ class LLMClient:
             base_url: Base URL of the OpenAI-compatible API.
             timeout: Request timeout in seconds.
             default_headers: Additional headers to include in every request.
+            provider: Provider name written to usage logs and used for pricing.
+            max_retries: Retries after the first attempt for transient failures.
+            retry_base_delay: Initial exponential-backoff delay in seconds.
+            usage_logger: Optional JSONL logger for completed calls.
         """
+        if timeout <= 0:
+            raise ValueError("timeout must be greater than zero")
+        if max_retries < 0:
+            raise ValueError("max_retries must be zero or greater")
+        if not isfinite(retry_base_delay) or retry_base_delay < 0:
+            raise ValueError(
+                "retry_base_delay must be a finite number that is zero or greater"
+            )
+
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")
         self.timeout = timeout
+        self.provider = provider.lower()
+        self.max_retries = max_retries
+        self.retry_base_delay = retry_base_delay
+        self.usage_logger = usage_logger
 
         headers = {"Content-Type": "application/json"}
         if api_key:
@@ -115,43 +156,173 @@ class LLMClient:
         payload.update(kwargs)
 
         started = time.perf_counter()
-        try:
-            response = self._client.post("/chat/completions", json=payload)
-        except httpx.HTTPError as e:
-            raise APIError(f"Request failed: {e}") from e
-        latency_ms = (time.perf_counter() - started) * 1000
+        max_attempts = self.max_retries + 1
 
-        if response.status_code == 401:
-            raise AuthenticationError("Invalid API key or unauthorized access")
-        if response.status_code == 429:
-            raise RateLimitError("Rate limit exceeded")
-        if response.status_code >= 400:
-            # Keep the provider's body untouched for observation; normalize a
-            # copy to dict so downstream .body handling stays uniform.
+        for attempt in range(1, max_attempts + 1):
             try:
-                error_body = response.json()
-                raw_body = error_body
-            except Exception:
-                # Non-JSON body (HTML/plain-text 502 from a proxy, etc.):
-                # keep the raw text for observation, normalize body to {}.
-                error_body = {}
-                raw_body = response.text
-            error_msg = self._extract_error_message(error_body) or response.text
-            if not isinstance(error_body, dict):
-                error_body = {"error": error_body}
-            raise APIError(
-                f"API error: {error_msg}",
-                status_code=response.status_code,
-                body=error_body,
-                raw_body=raw_body,
+                response = self._client.post("/chat/completions", json=payload)
+                error = self._error_from_response(response)
+            except httpx.TimeoutException as exc:
+                error = LLMTimeoutError(
+                    f"Request timed out after {self.timeout:g} seconds",
+                    attempts=attempt,
+                )
+                error.__cause__ = exc
+            except httpx.RequestError as exc:
+                error = LLMConnectionError(
+                    f"Could not reach provider: {exc}",
+                    attempts=attempt,
+                )
+                error.__cause__ = exc
+
+            if error is not None:
+                error.attempts = attempt
+                if error.retryable and attempt < max_attempts:
+                    time.sleep(self._retry_delay(attempt, error))
+                    continue
+                self._record_failure(
+                    model=model,
+                    error=error,
+                    started=started,
+                )
+                raise error
+
+            try:
+                data = response.json()
+            except ValueError as exc:
+                error = InvalidResponseError(
+                    f"Provider returned invalid JSON: {exc}",
+                    attempts=attempt,
+                )
+                self._record_failure(model=model, error=error, started=started)
+                raise error from exc
+            if not isinstance(data, dict):
+                error = InvalidResponseError(
+                    "Provider returned a JSON response that is not an object",
+                    attempts=attempt,
+                )
+                self._record_failure(model=model, error=error, started=started)
+                raise error
+
+            latency_ms = (time.perf_counter() - started) * 1000
+            parsed = self._parse_response(
+                data,
+                latency_ms=latency_ms,
+                attempts=attempt,
+            )
+            if not parsed.model:
+                parsed.model = model
+            parsed.estimated_cost_usd = estimate_cost_usd(
+                self.provider,
+                parsed.model,
+                parsed.usage,
+            )
+            self._record_success(parsed)
+            return parsed
+
+        raise AssertionError("retry loop exited unexpectedly")
+
+    def _error_from_response(self, response: httpx.Response) -> LLMError | None:
+        """Map an HTTP response to a typed error, or return None for success."""
+        if response.status_code < 400:
+            return None
+        if response.status_code in {401, 403}:
+            return AuthenticationError(
+                "Invalid API key or unauthorized access",
+            )
+        if response.status_code == 429:
+            return RateLimitError(
+                "Rate limit exceeded",
+                retry_after=self._parse_retry_after(response),
             )
 
+        # Keep the provider's body untouched for observation; normalize a copy
+        # to dict so downstream .body handling stays uniform.
         try:
-            data = response.json()
-        except Exception as e:
-            raise APIError(f"Failed to parse response: {e}") from e
+            error_body = response.json()
+            raw_body = error_body
+        except ValueError:
+            error_body = {}
+            raw_body = response.text
+        error_msg = self._extract_error_message(error_body) or response.text
+        if not isinstance(error_body, dict):
+            error_body = {"error": error_body}
+        return APIError(
+            f"API error: {error_msg}",
+            status_code=response.status_code,
+            body=error_body,
+            raw_body=raw_body,
+            retry_after=self._parse_retry_after(response),
+        )
 
-        return self._parse_response(data, latency_ms=latency_ms)
+    @staticmethod
+    def _parse_retry_after(response: httpx.Response) -> float | None:
+        """Parse Retry-After seconds or an HTTP date; invalid values use backoff."""
+        value = response.headers.get("retry-after")
+        if value is None:
+            return None
+        try:
+            return max(0.0, float(value))
+        except ValueError:
+            try:
+                retry_at = parsedate_to_datetime(value)
+            except (TypeError, ValueError):
+                return None
+            if retry_at.tzinfo is None:
+                retry_at = retry_at.replace(tzinfo=UTC)
+            return max(0.0, (retry_at - datetime.now(UTC)).total_seconds())
+
+    def _retry_delay(self, attempt: int, error: LLMError) -> float:
+        """Return Retry-After or capped exponential backoff for the next try."""
+        retry_after = getattr(error, "retry_after", None)
+        if retry_after is not None:
+            return min(retry_after, 60.0)
+        return min(self.retry_base_delay * (2 ** (attempt - 1)), 8.0)
+
+    def _record_success(self, response: ChatResponse) -> None:
+        """Write one success record without allowing logging to break a call."""
+        if self.usage_logger is None or response.latency_ms is None:
+            return
+        entry = UsageLogEntry.success(
+            provider=self.provider,
+            model=response.model,
+            usage=response.usage,
+            latency_ms=response.latency_ms,
+            estimated_cost_usd=response.estimated_cost_usd,
+            attempts=response.attempts,
+        )
+        self._write_usage_entry(entry)
+
+    def _record_failure(
+        self,
+        *,
+        model: str,
+        error: LLMError,
+        started: float,
+    ) -> None:
+        """Attach total latency to an error and write one failure record."""
+        latency_ms = (time.perf_counter() - started) * 1000
+        error.latency_ms = latency_ms
+        if self.usage_logger is None:
+            return
+        entry = UsageLogEntry.failure(
+            provider=self.provider,
+            model=model,
+            latency_ms=latency_ms,
+            attempts=error.attempts,
+            error_type=type(error).__name__,
+        )
+        self._write_usage_entry(entry)
+
+    def _write_usage_entry(self, entry: UsageLogEntry) -> None:
+        try:
+            self.usage_logger.log(entry)
+        except OSError:
+            logger.warning(
+                "Could not write LLM usage log to %s",
+                self.usage_logger.path,
+                exc_info=True,
+            )
 
     @staticmethod
     def _extract_error_message(error_body) -> str | None:
@@ -173,7 +344,12 @@ class LLMClient:
             return message
         return None
 
-    def _parse_response(self, data: dict, latency_ms: float | None = None) -> ChatResponse:
+    def _parse_response(
+        self,
+        data: dict,
+        latency_ms: float | None = None,
+        attempts: int = 1,
+    ) -> ChatResponse:
         """Parse the raw API response into a ChatResponse object."""
         choices = []
         for choice_data in data.get("choices", []):
@@ -191,7 +367,7 @@ class LLMClient:
             )
 
         usage = None
-        if "usage" in data and data["usage"]:
+        if data.get("usage"):
             usage_data = data["usage"]
             usage = Usage(
                 prompt_tokens=usage_data.get("prompt_tokens", 0),
@@ -205,6 +381,7 @@ class LLMClient:
             choices=choices,
             usage=usage,
             latency_ms=latency_ms,
+            attempts=attempts,
             raw=data,
         )
 

@@ -15,6 +15,7 @@ API keys are excluded from repr/str (repr=False) so they never leak into logs.
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from math import isfinite
 
 from .errors import ConfigError
 from .providers import get_provider
@@ -65,6 +66,9 @@ class LLMSettings:
 
     providers: dict[str, ProviderConfig] = field(default_factory=dict)
     timeout: float = 60.0
+    max_retries: int = 2
+    retry_base_delay: float = 0.5
+    usage_log_path: str | None = "logs/usage.jsonl"
 
     def get(self, name: str) -> ProviderConfig:
         """Return the config for a provider, raising ConfigError if unknown."""
@@ -95,6 +99,32 @@ def load_settings(env: Mapping[str, str] | None = None) -> LLMSettings:
         timeout = float(timeout_raw)
     except ValueError as e:
         raise ConfigError(f"LLM_TIMEOUT must be a number, got {timeout_raw!r}") from e
+    if timeout <= 0:
+        raise ConfigError("LLM_TIMEOUT must be greater than zero")
+
+    max_retries_raw = env.get("LLM_MAX_RETRIES", "2")
+    try:
+        max_retries = int(max_retries_raw)
+    except ValueError as e:
+        raise ConfigError(
+            f"LLM_MAX_RETRIES must be an integer, got {max_retries_raw!r}"
+        ) from e
+    if max_retries < 0:
+        raise ConfigError("LLM_MAX_RETRIES must be zero or greater")
+
+    retry_base_delay_raw = env.get("LLM_RETRY_BASE_DELAY", "0.5")
+    try:
+        retry_base_delay = float(retry_base_delay_raw)
+    except ValueError as e:
+        raise ConfigError(
+            f"LLM_RETRY_BASE_DELAY must be a number, got {retry_base_delay_raw!r}"
+        ) from e
+    if not isfinite(retry_base_delay) or retry_base_delay < 0:
+        raise ConfigError(
+            "LLM_RETRY_BASE_DELAY must be a finite number that is zero or greater"
+        )
+
+    usage_log_path = env.get("LLM_USAGE_LOG", "logs/usage.jsonl").strip() or None
 
     providers = {
         "openai": ProviderConfig(
@@ -129,4 +159,10 @@ def load_settings(env: Mapping[str, str] | None = None) -> LLMSettings:
             base_url=env.get("LOCAL_LLM_BASE_URL"),
         ),
     }
-    return LLMSettings(providers=providers, timeout=timeout)
+    return LLMSettings(
+        providers=providers,
+        timeout=timeout,
+        max_retries=max_retries,
+        retry_base_delay=retry_base_delay,
+        usage_log_path=usage_log_path,
+    )
