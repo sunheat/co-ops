@@ -28,3 +28,18 @@ cp .env.example .env      # fill in your API keys
 uv run pytest tests/ -v   # run tests
 uv run --env-file .env python -m examples.chat_basic
 ```
+
+## Reliability and usage logs
+
+The shared client applies timeout + retry settings and appends one JSON record
+per completed call to `logs/usage.jsonl` by default:
+
+```dotenv
+LLM_TIMEOUT=60
+LLM_MAX_RETRIES=2
+LLM_RETRY_BASE_DELAY=0.5
+LLM_USAGE_LOG=logs/usage.jsonl
+```
+
+See [Day 06 notes](docs/day-06-reliability-and-usage.md) and the
+[usage log example](examples/usage_log.jsonl).

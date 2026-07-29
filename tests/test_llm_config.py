@@ -1,6 +1,7 @@
 """Tests for ProviderConfig, LLMSettings, and load_settings()."""
 
 import pytest
+
 from packages.llm import LLMSettings, ProviderConfig, load_settings
 from packages.llm.errors import ConfigError, UnknownProviderError
 from packages.llm.providers import get_provider
@@ -35,7 +36,12 @@ def test_config_loads_from_env(monkeypatch):
     assert settings.get("local").base_url == "http://localhost:11434/v1"
 
     assert sorted(settings.configured_providers()) == [
-        "azure", "deepseek", "gemini", "local", "openai", "openrouter",
+        "azure",
+        "deepseek",
+        "gemini",
+        "local",
+        "openai",
+        "openrouter",
     ]
 
 
@@ -50,7 +56,9 @@ def test_load_settings_from_mapping():
 def test_api_key_not_in_repr():
     """API keys must never appear in repr/str (log safety)."""
     secret = "sk-super-secret"
-    config = ProviderConfig(name="openai", api_key=secret, base_url="https://api.openai.com/v1")
+    config = ProviderConfig(
+        name="openai", api_key=secret, base_url="https://api.openai.com/v1"
+    )
     assert secret not in repr(config)
     assert secret not in str(config)
     settings = LLMSettings(providers={"openai": config})
@@ -65,11 +73,13 @@ def test_openai_base_url_default():
 
 def test_azure_endpoint_composition():
     """Azure endpoint targets the v1 OpenAI-compatible API (/openai/v1)."""
-    settings = load_settings(env={
-        "AZURE_OPENAI_API_KEY": "k",
-        "AZURE_OPENAI_ENDPOINT": "https://myres.openai.azure.com/",
-        "AZURE_OPENAI_DEPLOYMENT": "gpt-4o",
-    })
+    settings = load_settings(
+        env={
+            "AZURE_OPENAI_API_KEY": "k",
+            "AZURE_OPENAI_ENDPOINT": "https://myres.openai.azure.com/",
+            "AZURE_OPENAI_DEPLOYMENT": "gpt-4o",
+        }
+    )
     azure = settings.get("azure")
     assert azure.is_configured
     assert azure.endpoint == "https://myres.openai.azure.com/openai/v1"
@@ -116,6 +126,40 @@ def test_load_settings_bad_timeout():
     """Non-numeric LLM_TIMEOUT raises ConfigError."""
     with pytest.raises(ConfigError):
         load_settings(env={"LLM_TIMEOUT": "not-a-number"})
+
+
+def test_load_reliability_and_logging_settings():
+    settings = load_settings(
+        env={
+            "LLM_TIMEOUT": "12.5",
+            "LLM_MAX_RETRIES": "4",
+            "LLM_RETRY_BASE_DELAY": "0.25",
+            "LLM_USAGE_LOG": "custom/usage.jsonl",
+        }
+    )
+    assert settings.timeout == 12.5
+    assert settings.max_retries == 4
+    assert settings.retry_base_delay == 0.25
+    assert settings.usage_log_path == "custom/usage.jsonl"
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("LLM_TIMEOUT", "0"),
+        ("LLM_MAX_RETRIES", "-1"),
+        ("LLM_MAX_RETRIES", "1.5"),
+        ("LLM_RETRY_BASE_DELAY", "-0.1"),
+        ("LLM_RETRY_BASE_DELAY", "soon"),
+    ],
+)
+def test_invalid_reliability_settings(name, value):
+    with pytest.raises(ConfigError):
+        load_settings(env={name: value})
+
+
+def test_blank_usage_log_path_disables_logging():
+    assert load_settings(env={"LLM_USAGE_LOG": ""}).usage_log_path is None
 
 
 def test_get_provider_preset():

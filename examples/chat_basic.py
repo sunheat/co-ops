@@ -36,6 +36,9 @@ def main():
     )
     if response.latency_ms is not None:
         print(f"Latency:  {response.latency_ms:.0f} ms")
+    if response.estimated_cost_usd is not None:
+        print(f"Est. cost: ${response.estimated_cost_usd:.8f}")
+    print(f"Attempts: {response.attempts}")
 
 
 if __name__ == "__main__":

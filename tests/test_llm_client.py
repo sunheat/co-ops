@@ -1,16 +1,17 @@
 """Basic tests for the LLM client."""
 
 import pytest
+
 from packages.llm import (
-    LLMClient,
+    ChatChoice,
     ChatMessage,
     ChatResponse,
-    ChatChoice,
+    LLMClient,
     LLMResponse,
     Usage,
     UsageTracker,
 )
-from packages.llm.errors import AuthenticationError, RateLimitError, APIError
+from packages.llm.errors import APIError
 
 
 def test_chat_message_to_dict():
@@ -92,7 +93,7 @@ def _client_with_error_response(status_code: int, json_body):
     def handler(request):
         return httpx.Response(status_code, json=json_body)
 
-    client = LLMClient(base_url="http://testserver/v1")
+    client = LLMClient(base_url="http://testserver/v1", max_retries=0)
     client._client = httpx.Client(
         base_url="http://testserver/v1", transport=httpx.MockTransport(handler)
     )
@@ -101,22 +102,26 @@ def _client_with_error_response(status_code: int, json_body):
 
 def test_api_error_openai_style_body():
     """OpenAI-style {"error": {"message": ...}} bodies keep working."""
-    with _client_with_error_response(
-        500, {"error": {"message": "server exploded", "type": "server_error"}}
-    ) as client:
-        with pytest.raises(APIError) as exc_info:
-            client.chat(model="m", messages=[{"role": "user", "content": "hi"}])
+    with (
+        _client_with_error_response(
+            500, {"error": {"message": "server exploded", "type": "server_error"}}
+        ) as client,
+        pytest.raises(APIError) as exc_info,
+    ):
+        client.chat(model="m", messages=[{"role": "user", "content": "hi"}])
     assert "server exploded" in str(exc_info.value)
     assert exc_info.value.status_code == 500
 
 
 def test_api_error_string_error_body():
     """Ollama-style {"error": "..."} bodies raise APIError, not AttributeError."""
-    with _client_with_error_response(
-        404, {"error": "model 'nope' not found, try pulling it first"}
-    ) as client:
-        with pytest.raises(APIError) as exc_info:
-            client.chat(model="nope", messages=[{"role": "user", "content": "hi"}])
+    with (
+        _client_with_error_response(
+            404, {"error": "model 'nope' not found, try pulling it first"}
+        ) as client,
+        pytest.raises(APIError) as exc_info,
+    ):
+        client.chat(model="nope", messages=[{"role": "user", "content": "hi"}])
     assert "model 'nope' not found" in str(exc_info.value)
     assert exc_info.value.status_code == 404
     assert exc_info.value.body == {
@@ -126,29 +131,39 @@ def test_api_error_string_error_body():
 
 def test_api_error_non_dict_body():
     """A bare-string JSON error body is normalized into APIError.body as a dict."""
-    with _client_with_error_response(502, "bad gateway") as client:
-        with pytest.raises(APIError) as exc_info:
-            client.chat(model="m", messages=[{"role": "user", "content": "hi"}])
+    with (
+        _client_with_error_response(502, "bad gateway") as client,
+        pytest.raises(APIError) as exc_info,
+    ):
+        client.chat(model="m", messages=[{"role": "user", "content": "hi"}])
     assert "bad gateway" in str(exc_info.value)
     assert exc_info.value.body == {"error": "bad gateway"}
 
 
 def test_api_error_array_body_preserved_in_raw_body():
     """Gemini-style top-level [...] error bodies survive untouched in raw_body."""
-    gemini_body = [{"error": {"code": 404, "message": "not found", "status": "NOT_FOUND"}}]
-    with _client_with_error_response(404, gemini_body) as client:
-        with pytest.raises(APIError) as exc_info:
-            client.chat(model="m", messages=[{"role": "user", "content": "hi"}])
-    assert exc_info.value.body == {"error": gemini_body}  # normalized for uniform handling
+    gemini_body = [
+        {"error": {"code": 404, "message": "not found", "status": "NOT_FOUND"}}
+    ]
+    with (
+        _client_with_error_response(404, gemini_body) as client,
+        pytest.raises(APIError) as exc_info,
+    ):
+        client.chat(model="m", messages=[{"role": "user", "content": "hi"}])
+    assert exc_info.value.body == {
+        "error": gemini_body
+    }  # normalized for uniform handling
     assert exc_info.value.raw_body == gemini_body  # provider's shape preserved
 
 
 def test_api_error_dict_body_raw_body_matches():
     """For already-dict bodies, raw_body and body are the same object."""
     body = {"error": {"message": "nope", "type": "invalid_request_error"}}
-    with _client_with_error_response(400, body) as client:
-        with pytest.raises(APIError) as exc_info:
-            client.chat(model="m", messages=[{"role": "user", "content": "hi"}])
+    with (
+        _client_with_error_response(400, body) as client,
+        pytest.raises(APIError) as exc_info,
+    ):
+        client.chat(model="m", messages=[{"role": "user", "content": "hi"}])
     assert exc_info.value.raw_body == exc_info.value.body == body
 
 
@@ -163,9 +178,8 @@ def test_api_error_non_json_body_text_preserved_in_raw_body():
     client._client = httpx.Client(
         base_url="http://testserver/v1", transport=httpx.MockTransport(handler)
     )
-    with client:
-        with pytest.raises(APIError) as exc_info:
-            client.chat(model="m", messages=[{"role": "user", "content": "hi"}])
+    with client, pytest.raises(APIError) as exc_info:
+        client.chat(model="m", messages=[{"role": "user", "content": "hi"}])
     assert "502 Bad Gateway" in str(exc_info.value)
     assert exc_info.value.body == {}  # nothing structured to normalize
     assert exc_info.value.raw_body == "<html>502 Bad Gateway</html>"
@@ -215,6 +229,8 @@ def test_llm_response_from_chat_response():
     assert response.completion_tokens == 34
     assert response.total_tokens == 46
     assert response.latency_ms == 123.4
+    assert response.estimated_cost_usd is None
+    assert response.attempts == 1
     assert response.raw == {"id": "test-123"}
 
 
