@@ -15,6 +15,7 @@ API keys are excluded from repr/str (repr=False) so they never leak into logs.
 import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from math import isfinite
 
 from .errors import ConfigError
 from .providers import get_provider
@@ -118,8 +119,10 @@ def load_settings(env: Mapping[str, str] | None = None) -> LLMSettings:
         raise ConfigError(
             f"LLM_RETRY_BASE_DELAY must be a number, got {retry_base_delay_raw!r}"
         ) from e
-    if retry_base_delay < 0:
-        raise ConfigError("LLM_RETRY_BASE_DELAY must be zero or greater")
+    if not isfinite(retry_base_delay) or retry_base_delay < 0:
+        raise ConfigError(
+            "LLM_RETRY_BASE_DELAY must be a finite number that is zero or greater"
+        )
 
     usage_log_path = env.get("LLM_USAGE_LOG", "logs/usage.jsonl").strip() or None
 

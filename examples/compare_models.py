@@ -27,7 +27,9 @@ from packages.llm import (
     APIError,
     AuthenticationError,
     ChatMessage,
+    LLMConnectionError,
     LLMError,
+    LLMTimeoutError,
     ModelRouter,
     RateLimitError,
     UsageTracker,
@@ -96,7 +98,9 @@ def observe_request_schema(model: str) -> None:
     print(_indent(_dump(payload)))
 
 
-def observe_response(router: ModelRouter, provider: str, model: str, tracker: UsageTracker) -> None:
+def observe_response(
+    router: ModelRouter, provider: str, model: str, tracker: UsageTracker
+) -> None:
     """Send a real request and inspect the response / usage fields."""
     messages = [ChatMessage(role="user", content=QUESTION)]
     response = router.chat(f"{provider}/{model}", messages, temperature=0.7)
@@ -106,8 +110,12 @@ def observe_response(router: ModelRouter, provider: str, model: str, tracker: Us
     # that put everything in a reasoning field); normalize before str methods
     # so usage inspection and later providers still run.
     answer = (response.content or "").strip().replace("\n", " ")
-    print(f"  [response] answer: {answer[:200] if answer else '(empty or null content)'}")
-    latency = f"{response.latency_ms:.0f} ms" if response.latency_ms is not None else "n/a"
+    print(
+        f"  [response] answer: {answer[:200] if answer else '(empty or null content)'}"
+    )
+    latency = (
+        f"{response.latency_ms:.0f} ms" if response.latency_ms is not None else "n/a"
+    )
     print(f"  [response] echoed model: {response.model!r} | latency: {latency}")
     print(f"  [response] top-level keys: {sorted(response.raw.keys())}")
 
@@ -118,7 +126,9 @@ def observe_response(router: ModelRouter, provider: str, model: str, tracker: Us
     print("  [usage] raw object:")
     print(_indent(_dump(raw_usage)))
     missing = [f for f in OPENAI_USAGE_FIELDS if f not in raw_usage]
-    verdict = "all OpenAI fields present" if not missing else f"MISSING: {', '.join(missing)}"
+    verdict = (
+        "all OpenAI fields present" if not missing else f"MISSING: {', '.join(missing)}"
+    )
     extra = [k for k in raw_usage if k not in OPENAI_USAGE_FIELDS]
     print(f"  [usage] {verdict}" + (f" | extra keys: {extra}" if extra else ""))
 
@@ -126,19 +136,25 @@ def observe_response(router: ModelRouter, provider: str, model: str, tracker: Us
 def _should_probe_errors(failure: LLMError | None) -> bool:
     """Decide whether the deliberate bad-model probe is worth firing.
 
-    Transport failures (APIError without an HTTP status), bad credentials and
-    rate limiting affect *every* request, so the probe would only repeat the
-    same failure -- and an unreachable endpoint would stall the script for a
-    second 60 s timeout. HTTP errors tied to the model itself (e.g. 404) still
-    leave the endpoint responsive, so probing remains informative.
+    Transport failures, bad credentials, and rate limiting affect *every*
+    request, so the probe would only repeat the same failure -- and an
+    unreachable endpoint would stall the script for another timeout. HTTP
+    errors tied to the model itself (e.g. 404) still leave the endpoint
+    responsive, so probing remains informative.
     """
     if failure is None:
         return True
-    if isinstance(failure, (AuthenticationError, RateLimitError)):
+    if isinstance(
+        failure,
+        (
+            AuthenticationError,
+            RateLimitError,
+            LLMConnectionError,
+            LLMTimeoutError,
+        ),
+    ):
         return False
-    if isinstance(failure, APIError) and failure.status_code is None:
-        return False
-    return True
+    return not (isinstance(failure, APIError) and failure.status_code is None)
 
 
 def observe_error(router: ModelRouter, provider: str) -> None:
@@ -166,7 +182,9 @@ def main() -> None:
     with ModelRouter(settings) as router:
         for provider, model in MODELS.items():
             model = _effective_model(settings, provider, model)
-            print(f"\n{'=' * 64}\n{provider} / {model or '(no deployment set)'}\n{'=' * 64}")
+            print(
+                f"\n{'=' * 64}\n{provider} / {model or '(no deployment set)'}\n{'=' * 64}"
+            )
 
             if not settings.get(provider).is_configured:
                 print("  [skipped] not configured -- set its key/base_url in .env")
@@ -176,7 +194,9 @@ def main() -> None:
             # deployment name the resolved model is "" and both requests would
             # only produce noise -- skip with a pointed message instead.
             if not model:
-                print("  [skipped] no deployment name -- set AZURE_OPENAI_DEPLOYMENT in .env")
+                print(
+                    "  [skipped] no deployment name -- set AZURE_OPENAI_DEPLOYMENT in .env"
+                )
                 continue
 
             observe_request_schema(model)
@@ -189,7 +209,9 @@ def main() -> None:
             if _should_probe_errors(failure):
                 observe_error(router, provider)
             else:
-                print("  [error] skipped -- provider unusable, probe would repeat the same failure")
+                print(
+                    "  [error] skipped -- provider unusable, probe would repeat the same failure"
+                )
 
     print(f"\n{'=' * 64}")
     print(f"Total: {tracker.calls} calls, {tracker.total.total_tokens} tokens")

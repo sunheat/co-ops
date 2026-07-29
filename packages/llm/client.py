@@ -6,6 +6,7 @@ import threading
 import time
 from datetime import UTC, datetime
 from email.utils import parsedate_to_datetime
+from math import isfinite
 
 import httpx
 
@@ -80,8 +81,10 @@ class LLMClient:
             raise ValueError("timeout must be greater than zero")
         if max_retries < 0:
             raise ValueError("max_retries must be zero or greater")
-        if retry_base_delay < 0:
-            raise ValueError("retry_base_delay must be zero or greater")
+        if not isfinite(retry_base_delay) or retry_base_delay < 0:
+            raise ValueError(
+                "retry_base_delay must be a finite number that is zero or greater"
+            )
 
         self.api_key = api_key
         self.base_url = base_url.rstrip("/")

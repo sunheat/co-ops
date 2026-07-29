@@ -73,6 +73,12 @@ def test_client_initialization():
     client.close()
 
 
+@pytest.mark.parametrize("delay", [float("nan"), float("inf"), float("-inf")])
+def test_client_rejects_non_finite_retry_delay(delay):
+    with pytest.raises(ValueError, match="finite number"):
+        LLMClient(retry_base_delay=delay)
+
+
 def test_client_context_manager():
     """Test LLMClient as context manager."""
     with LLMClient(api_key="test-key") as client:

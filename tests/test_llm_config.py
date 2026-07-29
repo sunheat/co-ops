@@ -151,6 +151,8 @@ def test_load_reliability_and_logging_settings():
         ("LLM_MAX_RETRIES", "1.5"),
         ("LLM_RETRY_BASE_DELAY", "-0.1"),
         ("LLM_RETRY_BASE_DELAY", "soon"),
+        ("LLM_RETRY_BASE_DELAY", "nan"),
+        ("LLM_RETRY_BASE_DELAY", "inf"),
     ],
 )
 def test_invalid_reliability_settings(name, value):
