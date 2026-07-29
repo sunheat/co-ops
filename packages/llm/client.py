@@ -4,6 +4,8 @@ import atexit
 import logging
 import threading
 import time
+from datetime import UTC, datetime
+from email.utils import parsedate_to_datetime
 
 import httpx
 
@@ -247,18 +249,25 @@ class LLMClient:
             status_code=response.status_code,
             body=error_body,
             raw_body=raw_body,
+            retry_after=self._parse_retry_after(response),
         )
 
     @staticmethod
     def _parse_retry_after(response: httpx.Response) -> float | None:
-        """Parse a numeric Retry-After header; HTTP dates fall back to backoff."""
+        """Parse Retry-After seconds or an HTTP date; invalid values use backoff."""
         value = response.headers.get("retry-after")
         if value is None:
             return None
         try:
             return max(0.0, float(value))
         except ValueError:
-            return None
+            try:
+                retry_at = parsedate_to_datetime(value)
+            except (TypeError, ValueError):
+                return None
+            if retry_at.tzinfo is None:
+                retry_at = retry_at.replace(tzinfo=UTC)
+            return max(0.0, (retry_at - datetime.now(UTC)).total_seconds())
 
     def _retry_delay(self, attempt: int, error: LLMError) -> float:
         """Return Retry-After or capped exponential backoff for the next try."""

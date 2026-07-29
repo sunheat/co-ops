@@ -66,12 +66,14 @@ class APIError(LLMError):
         raw_body=None,
         *,
         retryable: bool | None = None,
+        retry_after: float | None = None,
         attempts: int = 1,
     ):
         super().__init__(message, attempts=attempts)
         self.status_code = status_code
         self.body = body or {}
         self.raw_body = raw_body if raw_body is not None else self.body
+        self.retry_after = retry_after
         if retryable is None:
             self.retryable = status_code in {408, 409, 429} or (
                 status_code is not None and status_code >= 500

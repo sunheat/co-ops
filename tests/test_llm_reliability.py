@@ -181,3 +181,41 @@ def test_retry_after_header_is_used():
 
     assert calls == 2
     assert response.attempts == 2
+
+
+@pytest.mark.parametrize("status_code", [408, 409, 503])
+def test_retryable_http_errors_honor_retry_after(status_code):
+    calls = 0
+    observed_retry_after = []
+
+    def handler(request):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            return httpx.Response(
+                status_code,
+                headers={"Retry-After": "7"},
+                json={"error": {"message": "try later"}},
+            )
+        return httpx.Response(200, json=_success_response())
+
+    with LLMClient(
+        base_url="http://testserver/v1",
+        max_retries=1,
+        retry_base_delay=0,
+    ) as client:
+        _replace_transport(client, handler)
+
+        def observe_delay(attempt, error):
+            observed_retry_after.append(error.retry_after)
+            return 0
+
+        client._retry_delay = observe_delay
+        response = client.chat(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": "hi"}],
+        )
+
+    assert calls == 2
+    assert response.attempts == 2
+    assert observed_retry_after == [7.0]
