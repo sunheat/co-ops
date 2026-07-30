@@ -92,6 +92,49 @@ def test_client_base_url_trailing_slash():
     client.close()
 
 
+def test_chat_returns_content():
+    """A successful chat() call returns parsed content, role, and usage."""
+    import httpx
+
+    def handler(request):
+        return httpx.Response(
+            200,
+            json={
+                "id": "chatcmpl-1",
+                "model": "gpt-4o-mini",
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": "Hello!"},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 5,
+                    "completion_tokens": 2,
+                    "total_tokens": 7,
+                },
+            },
+        )
+
+    client = LLMClient(base_url="http://testserver/v1")
+    client._client.close()
+    client._client = httpx.Client(
+        base_url="http://testserver/v1", transport=httpx.MockTransport(handler)
+    )
+    with client:
+        response = client.chat(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": "hi"}],
+        )
+
+    assert response.content == "Hello!"
+    assert response.message.role == "assistant"
+    assert response.attempts == 1
+    assert response.usage.total_tokens == 7
+    assert response.latency_ms is not None
+
+
 def _client_with_error_response(status_code: int, json_body):
     """Build an LLMClient whose transport always returns the given error."""
     import httpx
