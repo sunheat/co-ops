@@ -2,7 +2,10 @@
 
 import json
 
+import httpx
+
 from packages.llm import (
+    LLMClient,
     Usage,
     UsageLogEntry,
     UsageLogger,
@@ -52,3 +55,54 @@ def test_usage_logger_appends_json_lines(tmp_path):
         "attempts": 1,
         "error_type": None,
     }
+
+
+def test_usage_is_recorded(tmp_path):
+    """A successful chat() call writes one usage record with real token counts."""
+    log_path = tmp_path / "usage.jsonl"
+
+    def handler(request):
+        return httpx.Response(
+            200,
+            json={
+                "id": "chatcmpl-1",
+                "model": "gpt-4o-mini",
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": "hi"},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 123,
+                    "completion_tokens": 45,
+                    "total_tokens": 168,
+                },
+            },
+        )
+
+    client = LLMClient(
+        base_url="http://testserver/v1",
+        provider="openai",
+        usage_logger=UsageLogger(log_path),
+    )
+    client._client.close()
+    client._client = httpx.Client(
+        base_url="http://testserver/v1", transport=httpx.MockTransport(handler)
+    )
+    with client:
+        client.chat(
+            model="gpt-4o-mini",
+            messages=[{"role": "user", "content": "hi"}],
+        )
+
+    record = json.loads(log_path.read_text(encoding="utf-8"))
+    assert record["status"] == "success"
+    assert record["provider"] == "openai"
+    assert record["model"] == "gpt-4o-mini"
+    assert record["prompt_tokens"] == 123
+    assert record["completion_tokens"] == 45
+    assert record["total_tokens"] == 168
+    assert record["estimated_cost_usd"] == 0.00004545
+    assert record["attempts"] == 1

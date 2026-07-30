@@ -1,44 +1,78 @@
 # Week 01 — LLM Gateway
 
-本周目标：搭建一个通用的 LLM 网关层（`packages/llm`），用统一的接口访问任意 OpenAI 兼容的模型服务。
+Goal of the week: build a universal LLM gateway layer (`packages/llm`) that talks
+to any OpenAI-compatible model service through one unified interface.
 
-## 模块结构
+## Why an LLM Gateway?
 
-| 文件 | 职责 |
+Everything built later in this project (RAG, agents, evals) needs to call models.
+Without a gateway, every module would duplicate the same concerns: endpoint
+differences, authentication, error handling, timeouts, retries, and cost
+tracking. The gateway centralizes those concerns once, so upper layers only
+depend on a single call — `llm.chat(messages, provider=..., model=...)` — and
+switching providers becomes a configuration change instead of a code change.
+
+## Module Structure
+
+| File | Responsibility |
 | --- | --- |
-| `client.py` | `LLMClient`：面向 OpenAI Chat Completions API 的 HTTP 客户端 |
-| `config.py` | `ProviderConfig` / `LLMSettings` / `load_settings()`：从环境变量加载各 provider 配置（含 Azure、本地端点） |
-| `providers.py` | 常见 provider 预设（OpenAI、OpenRouter、DeepSeek、Gemini、Ollama） |
-| `schemas.py` | 请求 / 响应的 dataclass（`ChatMessage`、`ChatChoice`、`ChatResponse`） |
-| `usage.py` | `Usage` 统计与 `UsageTracker` 累计 |
-| `errors.py` | 统一异常体系（`LLMError` 及其子类） |
-| `router.py` | `ModelRouter`：按 `provider/model` 命名路由到对应客户端 |
+| `client.py` | `LLMClient`: HTTP client for the OpenAI Chat Completions API, with retry/backoff; module-level `chat()` as the unified high-level entry point |
+| `config.py` | `ProviderConfig` / `LLMSettings` / `load_settings()`: load per-provider configuration from environment variables (including Azure and local endpoints) |
+| `providers.py` | Presets for well-known providers (OpenAI, OpenRouter, DeepSeek, Gemini, Ollama) |
+| `schemas.py` | Request/response dataclasses (`ChatMessage`, `ChatChoice`, `ChatResponse`, flat `LLMResponse`) |
+| `usage.py` | `Usage` stats, `UsageTracker` accumulation, `UsageLogger` JSONL logging, `estimate_cost_usd()` |
+| `errors.py` | Unified exception hierarchy (`LLMError` and subclasses, with per-type `retryable` flags) |
+| `router.py` | `ModelRouter`: routes `provider/model` names to lazily created, reused clients |
 
-## 快速开始
+## Supported Providers
+
+Any OpenAI-compatible `/chat/completions` endpoint works. Configured presets:
+
+| Provider | Notes |
+| --- | --- |
+| OpenAI | `OPENAI_API_KEY`, default base URL `https://api.openai.com/v1` |
+| Azure OpenAI | v1 GA API (`https://<resource>.openai.azure.com/openai/v1`); the deployment name goes in the model field |
+| Google Gemini | OpenAI-compatibility endpoint (`.../v1beta/openai`) |
+| OpenRouter | Free-tier models available; unified multi-vendor access |
+| DeepSeek | `https://api.deepseek.com/v1` |
+| Local | Any local endpoint (Ollama, vLLM, ...); base URL only, no API key required |
+
+## Quick Start
 
 ```bash
-# 1. 复制环境变量模板并填入密钥
+# 1. Copy the environment template and fill in your keys
 cp .env.example .env
 
-# 2. 运行测试
+# 2. Run the tests
 uv run pytest tests/ -v
 
-# 3. 运行示例（-m 保证仓库根目录在 sys.path，--env-file 加载 .env）
+# 3. Run the examples (-m keeps the repo root on sys.path, --env-file loads .env)
 uv run --env-file .env python -m examples.chat_basic
 uv run --env-file .env python -m examples.compare_models
 ```
 
-## 本周产出
+## Deliverables
 
-- [x] 通用 `LLMClient`（httpx，支持任意 OpenAI 兼容端点）
-- [x] 统一错误处理（401 / 429 / 4xx-5xx 分类）
-- [x] Provider 预设与环境变量配置解析（OpenAI / Azure / Gemini / OpenRouter / DeepSeek / 本地端点）
-- [x] API key 不进 repr / 日志（dataclass `repr=False`）
-- [x] `provider/model` 格式的简单路由
-- [x] 单元测试（client + config）
+- [x] Universal `LLMClient` (httpx, works with any OpenAI-compatible endpoint)
+- [x] Unified error handling (401/403, 429, other 4xx/5xx, timeout, connection, invalid-response — all typed)
+- [x] Provider presets and environment-based configuration (OpenAI / Azure / Gemini / OpenRouter / DeepSeek / local)
+- [x] API keys never appear in repr or logs (dataclass `repr=False`)
+- [x] Simple routing with `provider/model` names, plus a shared default router behind `llm.chat()`
+- [x] Retry with exponential backoff, `Retry-After` support, per-error-type retry decisions
+- [x] Usage tracking: JSONL request log, token accounting, cost estimation for known models
+- [x] Unit tests (client, config, reliability, usage, model comparison)
 
-## 下一步
+## Known Limitations
 
-- 流式输出（SSE）支持
-- 重试与退避策略
-- 按模型的成本核算（结合 `usage.py`）
+- No streaming (SSE) support
+- No tool calling (function calling) schema
+- Synchronous client only (no `AsyncLLMClient` yet)
+- Price table is small and hand-maintained; unknown models get `estimated_cost_usd = None`
+- `response_format="json"` requests JSON mode but the output is not schema-validated
+
+## Next Steps
+
+- Structured output: layer JSON-schema-validated responses on top of
+  `response_format` (see `docs/llm-client-design-notes.md` for the plan)
+- Streaming (SSE) support
+- `AsyncLLMClient` for the future web service (`apps/api`)
