@@ -72,23 +72,20 @@ class MessageBuilder:
         | None = None,
         output_instruction: str | None = None,
     ) -> list[ChatMessage]:
-        """Build system, developer, and user messages for a task.
+        """Build portable system and user messages for a task.
 
-        Context, task, and output instructions are deliberately combined into
-        one user message so they remain one coherent request payload.
+        Developer instructions are folded into the system message because the
+        gateway's provider-compatible role set does not include ``developer``.
+        Context, task, and output instructions are combined into one user
+        message so they remain one coherent request payload.
         """
-        messages = [
-            ChatMessage(role="system", content=self._required(system, "system"))
-        ]
+        system_content = self._required(system, "system")
         if developer_instruction is not None:
-            messages.append(
-                ChatMessage(
-                    role="developer",
-                    content=self._required(
-                        developer_instruction, "developer_instruction"
-                    ),
-                )
+            system_content = (
+                f"{system_content}\n\nDeveloper instruction:\n"
+                f"{self._required(developer_instruction, 'developer_instruction')}"
             )
+        messages = [ChatMessage(role="system", content=system_content)]
 
         user_parts: list[str] = []
         rendered_context = self._render_context(context)

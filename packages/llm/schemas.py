@@ -5,7 +5,7 @@ from typing import Literal
 
 from .usage import Usage
 
-Role = Literal["system", "developer", "user", "assistant"]
+Role = Literal["system", "user", "assistant"]
 
 
 @dataclass

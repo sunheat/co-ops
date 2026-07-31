@@ -41,7 +41,7 @@ def test_prompt_template_reports_missing_nested_format_spec_fields():
 
 
 def test_message_builder_orders_all_supported_message_sections():
-    """The builder keeps instruction layers separate and context in the task."""
+    """The builder uses portable roles while retaining each instruction layer."""
     messages = MessageBuilder().build(
         system="You are a support assistant.",
         developer_instruction="Use evidence only.",
@@ -54,8 +54,13 @@ def test_message_builder_orders_all_supported_message_sections():
     )
 
     assert messages == [
-        ChatMessage(role="system", content="You are a support assistant."),
-        ChatMessage(role="developer", content="Use evidence only."),
+        ChatMessage(
+            role="system",
+            content=(
+                "You are a support assistant.\n\n"
+                "Developer instruction:\nUse evidence only."
+            ),
+        ),
         ChatMessage(
             role="user",
             content=(
