@@ -67,7 +67,9 @@ class MessageBuilder:
         system: str,
         task: str,
         developer_instruction: str | None = None,
-        context: Sequence[str | ContextBlock | Mapping[str, object]] | None = None,
+        context: str
+        | Sequence[str | ContextBlock | Mapping[str, object]]
+        | None = None,
         output_instruction: str | None = None,
     ) -> list[ChatMessage]:
         """Build system, developer, and user messages for a task.
@@ -109,10 +111,12 @@ class MessageBuilder:
 
     def _render_context(
         self,
-        context: Sequence[str | ContextBlock | Mapping[str, object]] | None,
+        context: str | Sequence[str | ContextBlock | Mapping[str, object]] | None,
     ) -> str:
         if context is None:
             return ""
+        if isinstance(context, str):
+            context = [context]
 
         blocks = []
         for index, item in enumerate(context, start=1):

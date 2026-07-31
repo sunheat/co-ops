@@ -92,6 +92,19 @@ def test_message_builder_uses_default_label_for_whitespace_context_label():
     )
 
 
+def test_message_builder_treats_a_top_level_context_string_as_one_block():
+    """A context string is one block rather than a sequence of characters."""
+    messages = MessageBuilder().build(
+        system="You are helpful.",
+        task="Explain RAG.",
+        context="RAG retrieves relevant sources.",
+    )
+
+    assert messages[-1].content == (
+        "Context:\n[Context 1]\nRAG retrieves relevant sources.\n\nTask:\nExplain RAG."
+    )
+
+
 def test_message_builder_rejects_invalid_context_content():
     """Malformed context is rejected before it can produce an ambiguous prompt."""
     with pytest.raises(TypeError, match="context mapping must contain"):
