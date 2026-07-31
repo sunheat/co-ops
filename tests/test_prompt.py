@@ -25,6 +25,21 @@ def test_prompt_template_rejects_missing_and_unexpected_values():
         template.render(issue="mismatch", client="ACME-102")
 
 
+def test_prompt_template_supports_nested_format_spec_fields():
+    """Nested format-spec fields are accepted as required template values."""
+    template = PromptTemplate("{{width}} {value:{width}.{precision}f}")
+
+    assert template.render(value=3.14159, width=8, precision=2) == "{width}     3.14"
+
+
+def test_prompt_template_reports_missing_nested_format_spec_fields():
+    """Missing nested format-spec fields use the normal missing-values error."""
+    template = PromptTemplate("{value:{width}}")
+
+    with pytest.raises(ValueError, match="Missing template values: width"):
+        template.render(value="x")
+
+
 def test_message_builder_orders_all_supported_message_sections():
     """The builder keeps instruction layers separate and context in the task."""
     messages = MessageBuilder().build(
@@ -62,6 +77,19 @@ def test_message_builder_accepts_a_task_without_optional_sections():
 
     assert [message.role for message in messages] == ["system", "user"]
     assert messages[-1].content == "Task:\nExplain RAG."
+
+
+def test_message_builder_uses_default_label_for_whitespace_context_label():
+    """Whitespace-only context labels fall back to a readable default."""
+    messages = MessageBuilder().build(
+        system="You are helpful.",
+        task="Explain RAG.",
+        context=[ContextBlock(label="   ", content="RAG retrieves relevant sources.")],
+    )
+
+    assert messages[-1].content == (
+        "Context:\n[Context 1]\nRAG retrieves relevant sources.\n\nTask:\nExplain RAG."
+    )
 
 
 def test_message_builder_rejects_invalid_context_content():

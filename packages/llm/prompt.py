@@ -19,11 +19,7 @@ class PromptTemplate:
 
     def render(self, **values: object) -> str:
         """Render the template, rejecting missing or unexpected values."""
-        field_names = {
-            field_name.split(".", maxsplit=1)[0].split("[", maxsplit=1)[0]
-            for _, field_name, _, _ in Formatter().parse(self.template)
-            if field_name
-        }
+        field_names = self._field_names(self.template)
         missing = field_names.difference(values)
         unexpected = set(values).difference(field_names)
         if missing:
@@ -36,6 +32,22 @@ class PromptTemplate:
             return self.template.format(**values)
         except (IndexError, KeyError, ValueError) as exc:
             raise ValueError(f"Invalid prompt template: {exc}") from exc
+
+    @classmethod
+    def _field_names(cls, template: str) -> set[str]:
+        """Collect top-level fields, including nested fields in format specs."""
+        field_names = set()
+        for _, field_name, format_spec, _ in Formatter().parse(template):
+            if field_name:
+                field_names.add(cls._top_level_field_name(field_name))
+            if format_spec:
+                field_names.update(cls._field_names(format_spec))
+        return field_names
+
+    @staticmethod
+    def _top_level_field_name(field_name: str) -> str:
+        """Return the keyword argument name used by a replacement field."""
+        return field_name.split(".", maxsplit=1)[0].split("[", maxsplit=1)[0]
 
 
 @dataclass(frozen=True)
@@ -106,7 +118,9 @@ class MessageBuilder:
         for index, item in enumerate(context, start=1):
             block = self._coerce_context_block(item)
             content = self._required(block.content, f"context[{index}].content")
-            label = block.label.strip() if block.label else f"Context {index}"
+            label = block.label.strip() if block.label is not None else ""
+            if not label:
+                label = f"Context {index}"
             blocks.append(f"[{label}]\n{content}")
         return "\n\n".join(blocks)
 
