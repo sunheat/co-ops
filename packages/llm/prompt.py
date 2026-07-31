@@ -107,7 +107,7 @@ class MessageBuilder:
     def _required(value: str, name: str) -> str:
         if not isinstance(value, str) or not value.strip():
             raise ValueError(f"{name} must be a non-empty string")
-        return value.strip()
+        return value
 
     def _render_context(
         self,

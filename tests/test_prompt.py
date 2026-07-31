@@ -105,6 +105,22 @@ def test_message_builder_treats_a_top_level_context_string_as_one_block():
     )
 
 
+def test_message_builder_preserves_significant_context_whitespace():
+    """Whitespace-sensitive context such as code keeps its original indentation."""
+    code = "    def calculate_margin():\n        return 1"
+    messages = MessageBuilder().build(
+        system="You are helpful.",
+        task="Explain this code.",
+        context=[code],
+    )
+
+    assert messages[-1].content == (
+        "Context:\n[Context 1]\n"
+        "    def calculate_margin():\n        return 1\n\n"
+        "Task:\nExplain this code."
+    )
+
+
 def test_message_builder_rejects_invalid_context_content():
     """Malformed context is rejected before it can produce an ambiguous prompt."""
     with pytest.raises(TypeError, match="context mapping must contain"):
