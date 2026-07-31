@@ -13,6 +13,7 @@ from .errors import (
     RateLimitError,
     UnknownProviderError,
 )
+from .prompt import ContextBlock, MessageBuilder, PromptTemplate
 from .providers import PROVIDERS, Provider, get_provider
 from .router import ModelRouter
 from .schemas import ChatChoice, ChatMessage, ChatResponse, LLMResponse
@@ -35,6 +36,7 @@ __all__ = [
     "ChatMessage",
     "ChatResponse",
     "ConfigError",
+    "ContextBlock",
     "InvalidResponseError",
     "LLMClient",
     "LLMConnectionError",
@@ -42,8 +44,10 @@ __all__ = [
     "LLMResponse",
     "LLMSettings",
     "LLMTimeoutError",
+    "MessageBuilder",
     "ModelPrice",
     "ModelRouter",
+    "PromptTemplate",
     "Provider",
     "ProviderConfig",
     "RateLimitError",
