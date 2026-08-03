@@ -17,6 +17,11 @@ from .prompt import ContextBlock, MessageBuilder, PromptTemplate
 from .providers import PROVIDERS, Provider, get_provider
 from .router import ModelRouter
 from .schemas import ChatChoice, ChatMessage, ChatResponse, LLMResponse
+from .structured_output import (
+    InvestigationPlan,
+    investigation_plan_output_instruction,
+    parse_investigation_plan,
+)
 from .usage import (
     PRICE_TABLE,
     ModelPrice,
@@ -38,6 +43,7 @@ __all__ = [
     "ConfigError",
     "ContextBlock",
     "InvalidResponseError",
+    "InvestigationPlan",
     "LLMClient",
     "LLMConnectionError",
     "LLMError",
@@ -60,5 +66,7 @@ __all__ = [
     "close_default_router",
     "estimate_cost_usd",
     "get_provider",
+    "investigation_plan_output_instruction",
     "load_settings",
+    "parse_investigation_plan",
 ]
