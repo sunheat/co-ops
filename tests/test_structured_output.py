@@ -29,7 +29,7 @@ def valid_plan_payload() -> dict[str, object]:
 class ScriptedClient:
     """Minimal LLM client double that returns preconfigured response content."""
 
-    def __init__(self, outputs: list[str]):
+    def __init__(self, outputs: list[object]):
         self.outputs = outputs
         self.calls: list[dict[str, object]] = []
 
@@ -151,6 +151,24 @@ def test_request_investigation_plan_retries_invalid_json_with_correction_prompt(
     assert len(client.calls) == 2
     assert correction_messages[-2].content == invalid_output
     assert "LLM response is not valid JSON" in correction_messages[-1].content
+
+
+def test_request_investigation_plan_retries_non_string_response_content():
+    """Non-string provider content is retried as invalid structured output."""
+    invalid_output = {"summary": "not a JSON string"}
+    client = ScriptedClient([invalid_output, json.dumps(valid_plan_payload())])
+
+    plan = request_investigation_plan(
+        client,
+        "test-model",
+        [{"role": "user", "content": "Investigate the incident."}],
+    )
+
+    correction_messages = client.calls[1]["messages"]
+    assert plan.confidence == "medium"
+    assert len(client.calls) == 2
+    assert correction_messages[-2].content == json.dumps(invalid_output)
+    assert "response_text must be a string" in correction_messages[-1].content
 
 
 def test_request_investigation_plan_retries_missing_field_with_correction_prompt():

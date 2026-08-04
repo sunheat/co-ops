@@ -89,10 +89,17 @@ def request_investigation_plan(
     )
     try:
         return parse_investigation_plan(response.content)
-    except (ValueError, ValidationError) as error:
+    except (TypeError, ValueError, ValidationError) as error:
         correction_messages = [
             *messages,
-            ChatMessage(role="assistant", content=response.content),
+            ChatMessage(
+                role="assistant",
+                content=(
+                    response.content
+                    if isinstance(response.content, str)
+                    else json.dumps(response.content, default=str)
+                ),
+            ),
             ChatMessage(
                 role="user",
                 content=investigation_plan_correction_instruction(error),
