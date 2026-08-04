@@ -70,9 +70,20 @@ def request_investigation_plan(
     The correction retry is only used for invalid model output. Provider and
     transport errors continue to be handled by ``LLMClient.chat``.
     """
+    requested_response_format = chat_kwargs.pop("response_format", "json")
+    if (
+        not isinstance(requested_response_format, str)
+        or requested_response_format.lower() != "json"
+    ):
+        raise ValueError("request_investigation_plan requires response_format='json'")
+
+    initial_messages = [
+        *messages,
+        ChatMessage(role="user", content=investigation_plan_output_instruction()),
+    ]
     response = client.chat(
         model=model,
-        messages=messages,
+        messages=initial_messages,
         response_format="json",
         **chat_kwargs,
     )

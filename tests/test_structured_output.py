@@ -94,6 +94,50 @@ def test_request_investigation_plan_returns_first_valid_response_without_retry()
     assert client.calls[0]["kwargs"] == {"response_format": "json"}
 
 
+def test_request_investigation_plan_includes_schema_in_initial_request():
+    """The initial request states the schema before the model generates output."""
+    client = ScriptedClient([json.dumps(valid_plan_payload())])
+    messages = [{"role": "user", "content": "Investigate the incident."}]
+
+    request_investigation_plan(client, "test-model", messages)
+
+    initial_messages = client.calls[0]["messages"]
+    assert len(initial_messages) == 2
+    assert initial_messages[-1].content == investigation_plan_output_instruction()
+    assert messages == [{"role": "user", "content": "Investigate the incident."}]
+
+
+def test_request_investigation_plan_accepts_json_response_format_kwarg():
+    """A forwarded JSON response-format option does not duplicate the keyword."""
+    client = ScriptedClient([json.dumps(valid_plan_payload())])
+
+    plan = request_investigation_plan(
+        client,
+        "test-model",
+        [{"role": "user", "content": "Investigate the incident."}],
+        response_format="json",
+    )
+
+    assert plan.confidence == "medium"
+    assert len(client.calls) == 1
+    assert client.calls[0]["kwargs"] == {"response_format": "json"}
+
+
+def test_request_investigation_plan_rejects_non_json_response_format():
+    """The structured-output helper cannot be configured to request text."""
+    client = ScriptedClient([])
+
+    with pytest.raises(ValueError, match="requires response_format='json'"):
+        request_investigation_plan(
+            client,
+            "test-model",
+            [{"role": "user", "content": "Investigate the incident."}],
+            response_format="text",
+        )
+
+    assert client.calls == []
+
+
 def test_request_investigation_plan_retries_invalid_json_with_correction_prompt():
     """Malformed JSON triggers one correction request before validation succeeds."""
     invalid_output = '{"summary": "missing closing brace"'
