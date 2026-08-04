@@ -171,6 +171,22 @@ def test_request_investigation_plan_retries_non_string_response_content():
     assert "response_text must be a string" in correction_messages[-1].content
 
 
+def test_request_investigation_plan_retries_null_response_content():
+    """Null provider content is serialized before the correction request."""
+    client = ScriptedClient([None, json.dumps(valid_plan_payload())])
+
+    plan = request_investigation_plan(
+        client,
+        "test-model",
+        [{"role": "user", "content": "Investigate the incident."}],
+    )
+
+    correction_messages = client.calls[1]["messages"]
+    assert plan.confidence == "medium"
+    assert len(client.calls) == 2
+    assert correction_messages[-2].content == "null"
+
+
 def test_request_investigation_plan_retries_missing_field_with_correction_prompt():
     """A Pydantic validation error triggers one correction request."""
     incomplete_payload = valid_plan_payload()
