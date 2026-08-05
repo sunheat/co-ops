@@ -117,6 +117,10 @@ def test_result_accepts_source_ids_copied_from_bracketed_context_labels():
             True,
         ),
         ("The release is blocked until the staging test passes.", True),
+        (
+            "No blocking condition remains: the staging test completed and passed.",
+            False,
+        ),
     ],
 )
 def test_release_gate_validates_the_deployment_conclusion(answer, expected):
@@ -214,6 +218,7 @@ def test_severity_policy_comparison_does_not_make_p1_contradictory():
     [
         (CASES[2], "USD 140 remains for additional spend."),
         (CASES[5], "This incident is P10."),
+        (CASES[5], "This incident is not P1; classify it as P2."),
         (CASES[9], "The standard shipping charge is USD 16.99."),
     ],
 )

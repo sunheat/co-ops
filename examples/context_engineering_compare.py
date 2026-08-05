@@ -109,15 +109,24 @@ def _release_gate_answer_is_correct(answer: str) -> bool:
         )
         or re.search(r"\b(?:release|deployment)\s+(?:is\s+)?blocked\b", answer)
     )
-    staging_blocker = bool(
+    incomplete_staging = bool(
         re.search(
             r"\bstaging\b[^.]{0,80}"
-            r"\b(?:still|running|incomplete|not|no|without|complet(?:e|es|ed|ing)|"
-            r"pass(?:es|ed|ing)?)\b",
+            r"\b(?:still\s+running|incomplete|no\s+pass(?:ing|ed)?|"
+            r"not\s+complet(?:e|ed|ing)|not\s+pass(?:es|ed|ing)?|"
+            r"without(?:\s+a)?\s+pass(?:ing|ed)?|has(?:\s+not|n't)\s+"
+            r"(?:complet(?:e|ed|ing)|pass(?:es|ed|ing)?))\b",
             answer,
         )
     )
-    return negative_conclusion and staging_blocker
+    future_staging_gate = bool(
+        re.search(
+            r"\b(?:only\s+after|until|before)\b[^.]{0,80}\bstaging\b[^.]{0,80}"
+            r"\b(?:complet(?:e|es|ed|ing)|pass(?:es|ed|ing)?)\b",
+            answer,
+        )
+    )
+    return negative_conclusion and (incomplete_staging or future_staging_gate)
 
 
 def _identity_policy_answer_is_correct(answer: str) -> bool:
@@ -453,9 +462,14 @@ def _term_pattern(term: str) -> str | None:
 
 
 def _contains_expected_term(text: str, term: str) -> bool:
-    """Match a required answer term without accepting a substring of another token."""
+    """Match an affirmative required term without accepting token substrings."""
     pattern = _term_pattern(term)
-    return bool(pattern and re.search(pattern, text.casefold()))
+    if pattern is None:
+        return False
+    return any(
+        not _is_negated(text, match.start())
+        for match in re.finditer(pattern, text.casefold())
+    )
 
 
 def _contains_term(text: str, term: str) -> bool:
