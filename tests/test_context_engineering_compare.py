@@ -79,6 +79,67 @@ def test_result_requires_correct_answer_and_all_required_citations_for_grounding
     assert result.grounded
 
 
+def test_budget_working_does_not_match_the_embedded_wrong_amount():
+    case = CASES[2]
+    response = SimpleNamespace(
+        content=(
+            '{"answer": "USD 120 - USD 35 - USD 45 leaves USD 40 for additional '
+            'spend, not USD 20.", "evidence": ["budget_policy.md", '
+            '"march_ledger.md"]}'
+        ),
+        usage=None,
+        estimated_cost_usd=None,
+        latency_ms=320.0,
+        attempts=1,
+    )
+
+    result = _result_from_response(case, "structured", 1, response, None, None)
+
+    assert not result.known_contradiction
+    assert result.grounded
+
+
+def test_lockout_working_does_not_match_the_starting_timestamp():
+    case = CASES[7]
+    response = SimpleNamespace(
+        content=(
+            '{"answer": "The account unlocks at 10:35 UTC, 30 minutes after the final '
+            'failed attempt at 10:05 UTC.", "evidence": ["authentication_policy.md", '
+            '"login_audit.md"]}'
+        ),
+        usage=None,
+        estimated_cost_usd=None,
+        latency_ms=320.0,
+        attempts=1,
+    )
+
+    result = _result_from_response(
+        case, "context_engineered", 1, response, None, None
+    )
+
+    assert not result.known_contradiction
+    assert result.grounded
+
+
+def test_lockout_wrong_unlock_time_is_still_a_contradiction():
+    case = CASES[7]
+    response = SimpleNamespace(
+        content=(
+            '{"answer": "The account unlocks at 10:30 UTC.", "evidence": '
+            '["authentication_policy.md", "login_audit.md"]}'
+        ),
+        usage=None,
+        estimated_cost_usd=None,
+        latency_ms=320.0,
+        attempts=1,
+    )
+
+    result = _result_from_response(case, "structured", 1, response, None, None)
+
+    assert result.known_contradiction
+    assert not result.grounded
+
+
 def test_result_rejects_unknown_citation_and_known_wrong_answer():
     case = CASES[2]
     response = SimpleNamespace(

@@ -250,7 +250,7 @@ CASES: tuple[BenchmarkCase, ...] = (
         ),
         required_sources=frozenset({"authentication_policy.md", "login_audit.md"}),
         expected_answer_terms=("10:35",),
-        contradictory_answer_terms=("10:05", "10:30"),
+        contradictory_answer_terms=("10:30",),
     ),
     BenchmarkCase(
         case_id="09_retention_date",
@@ -371,6 +371,35 @@ def _normalize(text: str) -> str:
     return re.sub(r"[^a-z0-9]+", "", text.casefold())
 
 
+def _is_negated(text: str, start: int) -> bool:
+    """Return whether a candidate term is immediately qualified by a negation."""
+    prefix = text.casefold()[max(0, start - 40) : start]
+    return bool(
+        re.search(
+            r"\b(?:not|no|never|cannot|cant|isnt|arent|wasnt|werent|dont|doesnt|didnt)"
+            r"(?:\s+[a-z0-9]+){0,2}[\s,]*$",
+            prefix,
+        )
+    )
+
+
+def _contains_term(text: str, term: str) -> bool:
+    """Match an affirmative contradictory term without accepting token substrings."""
+    tokens = re.findall(r"[a-z]+|\d+", term.casefold())
+    if not tokens:
+        return False
+
+    if len(tokens) == 1 and len(tokens[0]) == 8 and tokens[0].startswith(("19", "20")):
+        tokens = [tokens[0][:4], tokens[0][4:6], tokens[0][6:]]
+
+    pattern = r"(?<![a-z0-9])" + r"[\W_]+".join(map(re.escape, tokens))
+    pattern += r"(?![a-z0-9])"
+    return any(
+        not _is_negated(text, match.start())
+        for match in re.finditer(pattern, text.casefold())
+    )
+
+
 def parse_output(content: str) -> ParsedOutput:
     """Parse the strict response contract without repairing malformed output."""
     try:
@@ -427,7 +456,7 @@ def _result_from_response(
         _normalize(term) in normalized_answer for term in case.expected_answer_terms
     )
     known_contradiction = any(
-        _normalize(term) in normalized_answer
+        _contains_term(parsed.answer, term)
         for term in case.contradictory_answer_terms
     )
     usage = response.usage
