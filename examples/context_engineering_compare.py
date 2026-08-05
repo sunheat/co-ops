@@ -93,9 +93,37 @@ class BenchmarkResult:
 PROMPT_STYLES = ("naive", "structured", "context_engineered")
 
 
+def _normalize_contractions(text: str) -> str:
+    """Normalize straight and curly apostrophe contractions for matching."""
+    return text.casefold().replace("’", "'").replace("'", "")
+
+
+def _delayed_import_answer_is_correct(answer: str) -> bool:
+    """Require the trade import to complete after reconciliation has started."""
+    answer = _normalize_contractions(answer)
+    import_after_reconciliation = bool(
+        re.search(
+            r"\b(?:trade\s+)?import\b[^.]{0,80}"
+            r"\b(?:complet(?:e|es|ed|ing)|finish(?:es|ed|ing))\b[^.]{0,80}"
+            r"\bafter\b[^.]{0,80}\breconciliation\b",
+            answer,
+        )
+    )
+    reconciliation_before_import = bool(
+        re.search(
+            r"\breconciliation\b[^.]{0,80}"
+            r"\b(?:start(?:s|ed|ing)?|ran|began)\b[^.]{0,80}\bbefore\b[^.]{0,80}"
+            r"\b(?:trade\s+)?import\b[^.]{0,80}"
+            r"\b(?:complet(?:e|es|ed|ing)|finish(?:es|ed|ing))\b",
+            answer,
+        )
+    )
+    return import_after_reconciliation or reconciliation_before_import
+
+
 def _release_gate_answer_is_correct(answer: str) -> bool:
     """Require a no-now deployment conclusion and an incomplete staging condition."""
-    answer = answer.casefold().strip()
+    answer = _normalize_contractions(answer).strip()
     negative_conclusion = bool(
         re.search(r"^no\b", answer)
         or re.search(
@@ -131,7 +159,7 @@ def _release_gate_answer_is_correct(answer: str) -> bool:
 
 def _identity_policy_answer_is_correct(answer: str) -> bool:
     """Require an explicit identity-verification denial with a policy-based reason."""
-    answer = answer.casefold().strip()
+    answer = _normalize_contractions(answer).strip()
     denial = bool(
         re.search(r"^no\b", answer)
         or re.search(
@@ -177,8 +205,9 @@ CASES: tuple[BenchmarkCase, ...] = (
             ),
         ),
         required_sources=frozenset({"operations_runbook.md", "incident_1842.md"}),
-        expected_answer_terms=("trade import", "after", "reconciliation"),
-        contradictory_answer_terms=("database corruption", "network outage"),
+        expected_answer_terms=(),
+        contradictory_answer_terms=(),
+        expected_answer_validator=_delayed_import_answer_is_correct,
     ),
     BenchmarkCase(
         case_id="02_release_gate",
@@ -438,7 +467,7 @@ def build_messages(case: BenchmarkCase, prompt_style: str) -> list[ChatMessage]:
 
 def _is_negated(text: str, start: int) -> bool:
     """Return whether a candidate term is immediately qualified by a negation."""
-    prefix = text.casefold()[max(0, start - 40) : start]
+    prefix = text[max(0, start - 40) : start]
     return bool(
         re.search(
             r"\b(?:not|no|never|cannot|cant|isnt|arent|wasnt|werent|dont|doesnt|didnt)"
@@ -466,9 +495,10 @@ def _contains_expected_term(text: str, term: str) -> bool:
     pattern = _term_pattern(term)
     if pattern is None:
         return False
+    text = _normalize_contractions(text)
     return any(
         not _is_negated(text, match.start())
-        for match in re.finditer(pattern, text.casefold())
+        for match in re.finditer(pattern, text)
     )
 
 
@@ -477,9 +507,10 @@ def _contains_term(text: str, term: str) -> bool:
     pattern = _term_pattern(term)
     if pattern is None:
         return False
+    text = _normalize_contractions(text)
     return any(
         not _is_negated(text, match.start())
-        for match in re.finditer(pattern, text.casefold())
+        for match in re.finditer(pattern, text)
     )
 
 

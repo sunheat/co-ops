@@ -109,11 +109,49 @@ def test_result_accepts_source_ids_copied_from_bracketed_context_labels():
     ("answer", "expected"),
     [
         (
+            "The trade import completed after reconciliation started, causing the mismatch.",
+            True,
+        ),
+        ("The reconciliation ran after the trade import.", False),
+    ],
+)
+def test_delayed_import_validates_the_event_order(answer, expected):
+    case = CASES[0]
+    response = SimpleNamespace(
+        content=json.dumps(
+            {
+                "answer": answer,
+                "evidence": [item.source for item in case.evidence],
+            }
+        ),
+        usage=None,
+        estimated_cost_usd=None,
+        latency_ms=320.0,
+        attempts=1,
+    )
+
+    result = _result_from_response(case, "structured", 1, response, None, None)
+
+    assert result.answer_correct is expected
+    assert result.grounded is expected
+
+
+@pytest.mark.parametrize(
+    ("answer", "expected"),
+    [
+        (
             "Yes, approvals are enough; the staging test has no passing result yet.",
             False,
         ),
         (
             "No, it can be deployed only after the staging test completes.",
+            True,
+        ),
+        (
+            (
+                "It can't be deployed because the staging test is still running and has no "
+                "passing result."
+            ),
             True,
         ),
         ("The release is blocked until the staging test passes.", True),
@@ -159,6 +197,10 @@ def test_release_gate_validates_the_deployment_conclusion(answer, expected):
                 "No, the request cannot be approved because national identity cards are "
                 "not accepted."
             ),
+            True,
+        ),
+        (
+            "The request can't be approved because national identity cards are not accepted.",
             True,
         ),
         (
@@ -219,6 +261,7 @@ def test_severity_policy_comparison_does_not_make_p1_contradictory():
         (CASES[2], "USD 140 remains for additional spend."),
         (CASES[5], "This incident is P10."),
         (CASES[5], "This incident is not P1; classify it as P2."),
+        (CASES[5], "This incident isn't P1; classify it as P2."),
         (CASES[9], "The standard shipping charge is USD 16.99."),
     ],
 )
