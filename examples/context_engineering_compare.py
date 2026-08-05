@@ -287,7 +287,7 @@ CASES: tuple[BenchmarkCase, ...] = (
             ),
         ),
         required_sources=frozenset({"shipping_policy.md", "cart.md"}),
-        expected_answer_terms=("699",),
+        expected_answer_terms=("6.99",),
         contradictory_answer_terms=("0.00", "usd 0"),
     ),
 )
@@ -329,7 +329,8 @@ def build_messages(case: BenchmarkCase, prompt_style: str) -> list[ChatMessage]:
                     f"Question: {case.question}\n\n"
                     "Return only valid JSON with exactly these fields:\n"
                     '{"answer": "a concise answer", "evidence": ["source-id"]}\n'
-                    "The evidence list must contain the source IDs that support the answer."
+                    "The evidence list must contain the bare source IDs that support the "
+                    "answer, without square brackets."
                 ),
             ),
         ]
@@ -359,16 +360,12 @@ def build_messages(case: BenchmarkCase, prompt_style: str) -> list[ChatMessage]:
                 "Return only one valid JSON object with exactly this schema: "
                 '{"answer": "one concise answer", "evidence": ["source-id", "..."]}. '
                 "Do not use Markdown or code fences. evidence must be a JSON array of "
-                "the exact source IDs shown in Context."
+                "bare source IDs without square brackets, even though Context labels use "
+                "square brackets."
             ),
         )
 
     raise ValueError(f"Unknown prompt style: {prompt_style}")
-
-
-def _normalize(text: str) -> str:
-    """Normalize text for small, deterministic benchmark assertions."""
-    return re.sub(r"[^a-z0-9]+", "", text.casefold())
 
 
 def _is_negated(text: str, start: int) -> bool:
@@ -383,21 +380,42 @@ def _is_negated(text: str, start: int) -> bool:
     )
 
 
-def _contains_term(text: str, term: str) -> bool:
-    """Match an affirmative contradictory term without accepting token substrings."""
-    tokens = re.findall(r"[a-z]+|\d+", term.casefold())
+def _term_pattern(term: str) -> str | None:
+    """Build a case-insensitive token-boundary pattern for a benchmark term."""
+    tokens = re.findall(r"[a-z]+\d*|\d+", term.casefold())
     if not tokens:
-        return False
+        return None
 
     if len(tokens) == 1 and len(tokens[0]) == 8 and tokens[0].startswith(("19", "20")):
         tokens = [tokens[0][:4], tokens[0][4:6], tokens[0][6:]]
 
     pattern = r"(?<![a-z0-9])" + r"[\W_]+".join(map(re.escape, tokens))
-    pattern += r"(?![a-z0-9])"
+    return pattern + r"(?![a-z0-9])"
+
+
+def _contains_expected_term(text: str, term: str) -> bool:
+    """Match a required answer term without accepting a substring of another token."""
+    pattern = _term_pattern(term)
+    return bool(pattern and re.search(pattern, text.casefold()))
+
+
+def _contains_term(text: str, term: str) -> bool:
+    """Match an affirmative contradictory term without accepting token substrings."""
+    pattern = _term_pattern(term)
+    if pattern is None:
+        return False
     return any(
         not _is_negated(text, match.start())
         for match in re.finditer(pattern, text.casefold())
     )
+
+
+def _normalize_citation(source: str) -> str:
+    """Accept one copied display-label wrapper while retaining strict source matching."""
+    source = source.strip()
+    if source.startswith("[") and source.endswith("]"):
+        return source[1:-1].strip()
+    return source
 
 
 def parse_output(content: str) -> ParsedOutput:
@@ -417,6 +435,7 @@ def parse_output(content: str) -> ParsedOutput:
         and isinstance(answer, str)
         and bool(answer.strip())
         and isinstance(evidence, list)
+        and bool(evidence)
         and all(isinstance(source, str) and source.strip() for source in evidence)
     )
     if not valid:
@@ -428,7 +447,7 @@ def parse_output(content: str) -> ParsedOutput:
     return ParsedOutput(
         format_valid=True,
         answer=answer,
-        citations=tuple(source.strip() for source in evidence),
+        citations=tuple(_normalize_citation(source) for source in evidence),
     )
 
 
@@ -451,9 +470,9 @@ def _result_from_response(
     allowed_sources = {item.source for item in case.evidence}
     citations_valid = bool(cited_sources) and set(cited_sources).issubset(allowed_sources)
     evidence_cited = citations_valid and case.required_sources.issubset(cited_sources)
-    normalized_answer = _normalize(parsed.answer)
     answer_correct = all(
-        _normalize(term) in normalized_answer for term in case.expected_answer_terms
+        _contains_expected_term(parsed.answer, term)
+        for term in case.expected_answer_terms
     )
     known_contradiction = any(
         _contains_term(parsed.answer, term)
