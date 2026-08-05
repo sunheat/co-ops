@@ -3,7 +3,10 @@
 import json
 from typing import Literal
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ValidationError
+
+from .client import LLMClient
+from .schemas import ChatMessage
 
 
 class InvestigationPlan(BaseModel):
@@ -41,3 +44,71 @@ def parse_investigation_plan(response_text: str) -> InvestigationPlan:
         raise ValueError("LLM response is not valid JSON") from exc
 
     return InvestigationPlan.model_validate(payload)
+
+
+def investigation_plan_correction_instruction(error: Exception) -> str:
+    """Return an instruction for correcting invalid investigation-plan output."""
+    schema = json.dumps(InvestigationPlan.model_json_schema(), indent=2)
+    return (
+        "Your previous response could not be parsed or did not match the required "
+        "schema. Return a corrected response as only a valid JSON object, with no "
+        "Markdown fences or extra text.\n"
+        f"Validation error: {error}\n"
+        "It must conform to this JSON Schema:\n"
+        f"{schema}"
+    )
+
+
+def request_investigation_plan(
+    client: LLMClient,
+    model: str,
+    messages: list[ChatMessage | dict],
+    **chat_kwargs: object,
+) -> InvestigationPlan:
+    """Request an investigation plan and retry once with a correction prompt.
+
+    The correction retry is only used for invalid model output. Provider and
+    transport errors continue to be handled by ``LLMClient.chat``.
+    """
+    requested_response_format = chat_kwargs.pop("response_format", "json")
+    if (
+        not isinstance(requested_response_format, str)
+        or requested_response_format.lower() != "json"
+    ):
+        raise ValueError("request_investigation_plan requires response_format='json'")
+
+    initial_messages = [
+        *messages,
+        ChatMessage(role="user", content=investigation_plan_output_instruction()),
+    ]
+    response = client.chat(
+        model=model,
+        messages=initial_messages,
+        response_format="json",
+        **chat_kwargs,
+    )
+    try:
+        return parse_investigation_plan(response.content)
+    except (TypeError, ValueError, ValidationError) as error:
+        correction_messages = [
+            *initial_messages,
+            ChatMessage(
+                role="assistant",
+                content=(
+                    response.content
+                    if isinstance(response.content, str)
+                    else json.dumps(response.content, default=str)
+                ),
+            ),
+            ChatMessage(
+                role="user",
+                content=investigation_plan_correction_instruction(error),
+            ),
+        ]
+        corrected_response = client.chat(
+            model=model,
+            messages=correction_messages,
+            response_format="json",
+            **chat_kwargs,
+        )
+        return parse_investigation_plan(corrected_response.content)
