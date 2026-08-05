@@ -153,6 +153,23 @@ def test_request_investigation_plan_retries_invalid_json_with_correction_prompt(
     assert "LLM response is not valid JSON" in correction_messages[-1].content
 
 
+def test_request_investigation_plan_preserves_initial_schema_turn_on_retry():
+    """Correction retries retain the initial schema instruction and role order."""
+    invalid_output = '{"summary": "missing closing brace"'
+    client = ScriptedClient([invalid_output, json.dumps(valid_plan_payload())])
+    messages = [{"role": "assistant", "content": "Earlier reply."}]
+
+    request_investigation_plan(client, "test-model", messages)
+
+    correction_messages = client.calls[1]["messages"]
+    assert [
+        message["role"] if isinstance(message, dict) else message.role
+        for message in correction_messages
+    ] == ["assistant", "user", "assistant", "user"]
+    assert correction_messages[1].content == investigation_plan_output_instruction()
+    assert correction_messages[2].content == invalid_output
+
+
 def test_request_investigation_plan_retries_non_string_response_content():
     """Non-string provider content is retried as invalid structured output."""
     invalid_output = {"summary": "not a JSON string"}

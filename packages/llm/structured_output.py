@@ -91,7 +91,7 @@ def request_investigation_plan(
         return parse_investigation_plan(response.content)
     except (TypeError, ValueError, ValidationError) as error:
         correction_messages = [
-            *messages,
+            *initial_messages,
             ChatMessage(
                 role="assistant",
                 content=(
