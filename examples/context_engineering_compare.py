@@ -120,6 +120,35 @@ def _release_gate_answer_is_correct(answer: str) -> bool:
     return negative_conclusion and staging_blocker
 
 
+def _identity_policy_answer_is_correct(answer: str) -> bool:
+    """Require an explicit identity-verification denial with a policy-based reason."""
+    answer = answer.casefold().strip()
+    denial = bool(
+        re.search(r"^no\b", answer)
+        or re.search(
+            r"\b(?:cannot|cant|must not|not allowed|not eligible)\b"
+            r"[^.]{0,80}\bapprov",
+            answer,
+        )
+        or re.search(r"\b(?:reject(?:ed|ion)?|denied|declined)\b", answer)
+    )
+    policy_reason = bool(
+        re.search(
+            r"\bnational\s+identity\b[^.]{0,80}"
+            r"\b(?:not\s+accepted|unaccepted|unsupported|invalid)\b",
+            answer,
+        )
+        or (
+            "national identity" in answer
+            and bool(
+                re.search(r"\b(?:only|accepted)\b[^.]{0,80}"
+                          r"\b(?:passport|driver\s+license)\b", answer)
+            )
+        )
+    )
+    return denial and policy_reason
+
+
 CASES: tuple[BenchmarkCase, ...] = (
     BenchmarkCase(
         case_id="01_delayed_import",
@@ -220,8 +249,9 @@ CASES: tuple[BenchmarkCase, ...] = (
             ),
         ),
         required_sources=frozenset({"identity_policy.md", "verification_request.md"}),
-        expected_answer_terms=("no", "national identity"),
-        contradictory_answer_terms=("request is approved", "national identity is accepted"),
+        expected_answer_terms=(),
+        contradictory_answer_terms=(),
+        expected_answer_validator=_identity_policy_answer_is_correct,
     ),
     BenchmarkCase(
         case_id="06_incident_severity",
@@ -241,7 +271,7 @@ CASES: tuple[BenchmarkCase, ...] = (
         ),
         required_sources=frozenset({"severity_policy.md", "incident_2088.md"}),
         expected_answer_terms=("p1",),
-        contradictory_answer_terms=("p2", "p3"),
+        contradictory_answer_terms=(),
     ),
     BenchmarkCase(
         case_id="07_feature_flag",

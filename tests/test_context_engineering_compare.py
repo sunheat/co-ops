@@ -141,6 +141,75 @@ def test_release_gate_validates_the_deployment_conclusion(answer, expected):
 
 
 @pytest.mark.parametrize(
+    ("answer", "expected"),
+    [
+        (
+            (
+                "Yes, approve the request because the applicant submitted a national "
+                "identity card and no other identity document."
+            ),
+            False,
+        ),
+        (
+            (
+                "No, the request cannot be approved because national identity cards are "
+                "not accepted."
+            ),
+            True,
+        ),
+        (
+            (
+                "The request must be rejected because the submitted national identity card "
+                "is unsupported; only passports or driver licenses are accepted."
+            ),
+            True,
+        ),
+    ],
+)
+def test_identity_policy_validates_the_denial_conclusion(answer, expected):
+    case = CASES[4]
+    response = SimpleNamespace(
+        content=json.dumps(
+            {
+                "answer": answer,
+                "evidence": [item.source for item in case.evidence],
+            }
+        ),
+        usage=None,
+        estimated_cost_usd=None,
+        latency_ms=320.0,
+        attempts=1,
+    )
+
+    result = _result_from_response(case, "structured", 1, response, None, None)
+
+    assert result.answer_correct is expected
+    assert result.grounded is expected
+
+
+def test_severity_policy_comparison_does_not_make_p1_contradictory():
+    case = CASES[5]
+    response = SimpleNamespace(
+        content=json.dumps(
+            {
+                "answer": "P1 because 87 users are affected; P2 applies to 50 or fewer users.",
+                "evidence": [item.source for item in case.evidence],
+            }
+        ),
+        usage=None,
+        estimated_cost_usd=None,
+        latency_ms=320.0,
+        attempts=1,
+    )
+
+    result = _result_from_response(case, "structured", 1, response, None, None)
+
+    assert result.answer_correct
+    assert not result.known_contradiction
+    assert result.grounded
+
+
+@pytest.mark.parametrize(
     ("case", "answer"),
     [
         (CASES[2], "USD 140 remains for additional spend."),
