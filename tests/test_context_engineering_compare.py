@@ -106,6 +106,41 @@ def test_result_accepts_source_ids_copied_from_bracketed_context_labels():
 
 
 @pytest.mark.parametrize(
+    ("answer", "expected"),
+    [
+        (
+            "Yes, approvals are enough; the staging test has no passing result yet.",
+            False,
+        ),
+        (
+            "No, it can be deployed only after the staging test completes.",
+            True,
+        ),
+        ("The release is blocked until the staging test passes.", True),
+    ],
+)
+def test_release_gate_validates_the_deployment_conclusion(answer, expected):
+    case = CASES[1]
+    response = SimpleNamespace(
+        content=json.dumps(
+            {
+                "answer": answer,
+                "evidence": [item.source for item in case.evidence],
+            }
+        ),
+        usage=None,
+        estimated_cost_usd=None,
+        latency_ms=320.0,
+        attempts=1,
+    )
+
+    result = _result_from_response(case, "structured", 1, response, None, None)
+
+    assert result.answer_correct is expected
+    assert result.grounded is expected
+
+
+@pytest.mark.parametrize(
     ("case", "answer"),
     [
         (CASES[2], "USD 140 remains for additional spend."),

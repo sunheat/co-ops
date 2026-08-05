@@ -15,7 +15,7 @@ import json
 import re
 import time
 from collections import defaultdict
-from collections.abc import Iterable
+from collections.abc import Callable, Iterable
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -53,6 +53,7 @@ class BenchmarkCase:
     required_sources: frozenset[str]
     expected_answer_terms: tuple[str, ...]
     contradictory_answer_terms: tuple[str, ...]
+    expected_answer_validator: Callable[[str], bool] | None = None
 
 
 @dataclass(frozen=True)
@@ -90,6 +91,33 @@ class BenchmarkResult:
 
 
 PROMPT_STYLES = ("naive", "structured", "context_engineered")
+
+
+def _release_gate_answer_is_correct(answer: str) -> bool:
+    """Require a no-now deployment conclusion and an incomplete staging condition."""
+    answer = answer.casefold().strip()
+    negative_conclusion = bool(
+        re.search(r"^no\b", answer)
+        or re.search(
+            r"\b(?:cannot|cant|must not|not yet|blocked|not allowed|not permitted)\b"
+            r"[^.]{0,80}\bdeploy",
+            answer,
+        )
+        or re.search(
+            r"\b(?:can|may)(?:\s+be)?\s+deployed\s+(?:only\s+)?after\b",
+            answer,
+        )
+        or re.search(r"\b(?:release|deployment)\s+(?:is\s+)?blocked\b", answer)
+    )
+    staging_blocker = bool(
+        re.search(
+            r"\bstaging\b[^.]{0,80}"
+            r"\b(?:still|running|incomplete|not|no|without|complet(?:e|es|ed|ing)|"
+            r"pass(?:es|ed|ing)?)\b",
+            answer,
+        )
+    )
+    return negative_conclusion and staging_blocker
 
 
 CASES: tuple[BenchmarkCase, ...] = (
@@ -131,8 +159,9 @@ CASES: tuple[BenchmarkCase, ...] = (
             ),
         ),
         required_sources=frozenset({"release_policy.md", "release_3.4.1.md"}),
-        expected_answer_terms=("no", "staging"),
-        contradictory_answer_terms=("can be deployed", "ready to deploy"),
+        expected_answer_terms=(),
+        contradictory_answer_terms=(),
+        expected_answer_validator=_release_gate_answer_is_correct,
     ),
     BenchmarkCase(
         case_id="03_budget_math",
@@ -470,9 +499,13 @@ def _result_from_response(
     allowed_sources = {item.source for item in case.evidence}
     citations_valid = bool(cited_sources) and set(cited_sources).issubset(allowed_sources)
     evidence_cited = citations_valid and case.required_sources.issubset(cited_sources)
-    answer_correct = all(
-        _contains_expected_term(parsed.answer, term)
-        for term in case.expected_answer_terms
+    answer_correct = (
+        case.expected_answer_validator(parsed.answer)
+        if case.expected_answer_validator is not None
+        else all(
+            _contains_expected_term(parsed.answer, term)
+            for term in case.expected_answer_terms
+        )
     )
     known_contradiction = any(
         _contains_term(parsed.answer, term)
