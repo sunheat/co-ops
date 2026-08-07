@@ -238,7 +238,7 @@ def test_severity_policy_comparison_does_not_make_p1_contradictory():
     response = SimpleNamespace(
         content=json.dumps(
             {
-                "answer": "P1 because 87 users are affected; P2 applies to 50 or fewer users.",
+                "answer": "No workaround, P1 because 87 users are affected; P2 applies to 50 or fewer users.",
                 "evidence": [item.source for item in case.evidence],
             }
         ),

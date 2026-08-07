@@ -470,8 +470,10 @@ def _is_negated(text: str, start: int) -> bool:
     prefix = text[max(0, start - 40) : start]
     return bool(
         re.search(
-            r"\b(?:not|no|never|cannot|cant|isnt|arent|wasnt|werent|dont|doesnt|didnt)"
-            r"(?:\s+[a-z0-9]+){0,2}[\s,]*$",
+            r"(?:\bnot|\bnever|\bcannot|\bcant|\bisnt|\barent|\bwasnt|"
+            r"\bwerent|\bdont|\bdoesnt|\bdidnt)"
+            r"(?:\s+[a-z0-9]+){0,2}[\s,]*$"
+            r"|\bno[\s,]*$",
             prefix,
         )
     )
