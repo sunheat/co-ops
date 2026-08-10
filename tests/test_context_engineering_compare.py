@@ -154,8 +154,23 @@ def test_model_controlled_wrong_types_never_escape_scoring(
     result = score(case, answer)
 
     assert result.status == "ok"
+    assert not result.format_valid
     assert not result.answer_schema_valid
     assert not result.answer_correct
+
+
+def test_format_metric_rejects_top_level_valid_but_typed_schema_invalid_answer():
+    case = CASES[2]
+    answer = dict(case.expected_answer)
+    answer["additional_spend_usd"] = 40
+
+    result = score(case, answer)
+
+    assert result.status == "ok"
+    assert not result.answer_schema_valid
+    assert not result.format_valid
+    assert not result.answer_correct
+    assert not result.grounded
 
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.case_id)

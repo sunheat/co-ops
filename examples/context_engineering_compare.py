@@ -1224,7 +1224,7 @@ def _result_from_response(
     )
     return BenchmarkResult(
         status="ok",
-        format_valid=parsed.format_valid,
+        format_valid=parsed.format_valid and parsed.answer_schema_valid,
         answer_schema_valid=parsed.answer_schema_valid,
         evidence_cited=evidence_cited,
         citations_valid=citations_valid,

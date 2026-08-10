@@ -58,7 +58,7 @@ Interruption is a run-level state. A partial manifest records the active request
 
 ## Metrics
 
-`Answer correct`, `Format`, `Evidence cited`, and `Grounded` are separate. `Grounded` requires a correct typed answer and every required valid citation. Quality ratios use only gradable `ok` rows and display gradable/planned coverage beside each ratio. Provider failures, truncations, and missing calls are shown separately rather than being misreported as ordinary wrong answers.
+`Answer correct`, `Format`, `Evidence cited`, and `Grounded` are separate. `Format` means both the top-level JSON envelope and the case-specific typed answer schema are valid. `Grounded` requires a correct typed answer and every required valid citation. Quality ratios use only gradable `ok` rows and display gradable/planned coverage beside each ratio. Provider failures, truncations, and missing calls are shown separately rather than being misreported as ordinary wrong answers.
 
 Stability requires every planned repeat for a case/style group to exist, have status `ok`, and be grounded. Missing, failed, or truncated calls therefore cannot produce 100% stability. Usage reporting includes input, output, and total token means with planned coverage. Latency has the same coverage policy. Cost is shown only when every planned row for the style has valid cost data.
 
