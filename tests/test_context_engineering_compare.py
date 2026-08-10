@@ -492,7 +492,10 @@ def test_response_metadata_is_bounded_and_cannot_overflow_cost():
 
 def test_provider_usage_can_include_unreported_reasoning_tokens():
     response = make_response(
-        CASES[0], CASES[0].expected_answer, usage=Usage(19, 75, 933)
+        CASES[0],
+        CASES[0].expected_answer,
+        usage=Usage(19, 75, 933),
+        estimated_cost_usd=0.125,
     )
     result = _result_from_response(
         CASES[0],
@@ -509,6 +512,37 @@ def test_provider_usage_can_include_unreported_reasoning_tokens():
         933,
     )
     assert result.estimated_cost_usd is None
+
+
+def test_explicit_prices_override_provider_cost_estimate():
+    response = make_response(
+        CASES[0],
+        CASES[0].expected_answer,
+        usage=Usage(100, 20, 120),
+        estimated_cost_usd=0.999,
+    )
+
+    result = _result_from_response(
+        CASES[0],
+        "naive",
+        1,
+        response,
+        input_price_per_million=2.0,
+        output_price_per_million=4.0,
+    )
+
+    assert result.estimated_cost_usd == 0.00028
+
+
+def test_provider_cost_estimate_is_used_without_explicit_prices():
+    result = score(
+        CASES[0],
+        CASES[0].expected_answer,
+        usage=Usage(100, 20, 120),
+        estimated_cost_usd=0.999,
+    )
+
+    assert result.estimated_cost_usd == 0.999
 
 
 def test_rfc3339_unknown_offset_marker_is_not_a_proven_instant():

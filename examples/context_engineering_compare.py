@@ -1114,16 +1114,17 @@ def _result_from_response(
     normalized_finish = _normalize_finish_reason(finish_reason)
     truncated = normalized_finish in TRUNCATED_FINISH_REASONS
     prompt_tokens, completion_tokens, total_tokens = _usage_values(response)
-    estimated_cost = _finite_optional_cost(
-        getattr(response, "estimated_cost_usd", None)
+    configured_prices = (
+        input_price_per_million is not None and output_price_per_million is not None
     )
-    if (
-        estimated_cost is None
-        and prompt_tokens is not None
+    if not configured_prices:
+        estimated_cost = _finite_optional_cost(
+            getattr(response, "estimated_cost_usd", None)
+        )
+    elif (
+        prompt_tokens is not None
         and completion_tokens is not None
         and total_tokens == prompt_tokens + completion_tokens
-        and input_price_per_million is not None
-        and output_price_per_million is not None
     ):
         try:
             calculated_cost = (
@@ -1137,6 +1138,9 @@ def _result_from_response(
             if math.isfinite(calculated_cost) and calculated_cost >= 0
             else None
         )
+    else:
+        # A configured tariff cannot price provider-specific hidden token classes.
+        estimated_cost = None
 
     common = {
         "case_id": case.case_id,
