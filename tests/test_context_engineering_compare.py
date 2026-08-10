@@ -309,6 +309,15 @@ def test_deeply_nested_json_is_a_format_failure_not_an_exception():
     assert parsed.raw_payload == content
 
 
+def test_json_with_invalid_top_level_shape_preserves_raw_response():
+    content = '["decoded but not a benchmark response"]'
+
+    parsed = parse_output(content, CASES[0])
+
+    assert not parsed.format_valid
+    assert parsed.raw_payload == content
+
+
 def test_unpaired_surrogates_are_safely_persisted_as_json_escapes(tmp_path):
     case = CASES[2]
     content = (

@@ -966,7 +966,7 @@ def parse_output(content: str, case: BenchmarkCase | None = None) -> ParsedOutpu
             False,
             answer if isinstance(answer, dict) else None,
             (),
-            payload,
+            content,
         )
 
     citations = tuple(payload["evidence"])
