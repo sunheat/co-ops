@@ -1,0 +1,62 @@
+{
+  "active_request_id": null,
+  "actual_models": {
+    "gpt-5.5-2026-04-24": 60
+  },
+  "case_ids": [
+    "01_delayed_import",
+    "02_release_gate",
+    "03_budget_math",
+    "04_api_timeline",
+    "05_identity_policy",
+    "06_incident_severity",
+    "07_feature_flag",
+    "08_account_lock",
+    "09_retention_date",
+    "10_shipping_rule"
+  ],
+  "completed_at": "2026-08-10T13:18:59.664363+00:00",
+  "completed_calls": 60,
+  "config": {
+    "input_price_per_million": null,
+    "max_retries": 0,
+    "max_tokens": 512,
+    "output_price_per_million": null,
+    "provider": "azure",
+    "request_delay_seconds": 6.0,
+    "requested_model": "model-router",
+    "temperature": 0.0
+  },
+  "interrupted_at": null,
+  "kind": "live",
+  "planned_calls": 60,
+  "prompt_styles": [
+    "naive",
+    "structured",
+    "context_engineered"
+  ],
+  "prompts_file_sha256": "cc9656c5ebeacc3796fb6cb14d8280c2293856f619575f96c623110752bd7fd6",
+  "pydantic_version": "2.13.4",
+  "python_version": "3.12.10",
+  "repeats": 2,
+  "report_generated_at": "2026-08-10T13:18:59.664363+00:00",
+  "request_file_sha256": "db55c62de283a503dfc00d07ab2069dd0df74843a2bb389e60b4b184c970c985",
+  "results_file_sha256": "c72a42520db3cdf6763afad2dbdb09ce557ef618faf12160548f5aa9e085a6c2",
+  "rubric_version": "typed-answers-v3",
+  "run_id": "361297583e034e39be041b09354a94a1",
+  "schema": "context-engineering-benchmark-v2",
+  "scorer_commit": "df198920d27b71fc12fd208485324ac2d1512f5b",
+  "scorer_dirty": true,
+  "scorer_source_sha256": "bf314a71b40bf4cee409ab8c99ab44e7d4052e14a01be78b2b60ff798d3b8101",
+  "seed": 42,
+  "source": null,
+  "started_at": "2026-08-10T13:09:08.291543+00:00",
+  "status": "complete",
+  "status_counts": {
+    "ok": 60,
+    "provider_error": 0,
+    "truncated": 0
+  },
+  "summary_file_sha256": "8a4064193b361e52e8fb3c3f5d7eb8b769293f978ef2de9fa3c20d4b28c15dce",
+  "updated_at": "2026-08-10T13:18:59.665663+00:00"
+}
