@@ -2,7 +2,7 @@
 
 import pytest
 
-from packages.rag import ContextBuilder, RetrievedChunk
+from packages.context import ContextBuilder, RetrievedChunk
 
 
 def test_context_builder_builds_four_ordered_layers_with_mock_chunks():

@@ -42,13 +42,12 @@ from pydantic import (
 
 from packages.llm import (
     ChatMessage,
-    ContextBlock,
     LLMError,
-    MessageBuilder,
     ModelRouter,
     Usage,
     load_settings,
 )
+from packages.prompt import ContextBlock, MessageBuilder
 
 ARTIFACT_SCHEMA = "context-engineering-benchmark-v2"
 LEGACY_ARTIFACT_SCHEMA = "context-engineering-benchmark-legacy-import-v1"

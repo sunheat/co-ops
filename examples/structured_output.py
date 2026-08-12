@@ -1,8 +1,7 @@
 """Request and validate an LLM investigation plan in a JSON-only format."""
 
-from packages.llm import (
-    ContextBlock,
-    MessageBuilder,
+from packages.prompt import ContextBlock, MessageBuilder
+from packages.structured_output import (
     investigation_plan_output_instruction,
     parse_investigation_plan,
 )

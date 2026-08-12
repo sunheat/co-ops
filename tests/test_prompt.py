@@ -3,7 +3,7 @@
 import pytest
 
 from packages.llm import ChatMessage
-from packages.llm.prompt import ContextBlock, MessageBuilder, PromptTemplate
+from packages.prompt import ContextBlock, MessageBuilder, PromptTemplate
 
 
 def test_prompt_template_renders_named_values():

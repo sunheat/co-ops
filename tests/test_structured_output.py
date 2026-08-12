@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import pytest
 from pydantic import ValidationError
 
-from packages.llm.structured_output import (
+from packages.structured_output import (
     InvestigationPlan,
     investigation_plan_correction_instruction,
     investigation_plan_output_instruction,
@@ -208,7 +208,9 @@ def test_request_investigation_plan_retries_missing_field_with_correction_prompt
     """A Pydantic validation error triggers one correction request."""
     incomplete_payload = valid_plan_payload()
     del incomplete_payload["next_steps"]
-    client = ScriptedClient([json.dumps(incomplete_payload), json.dumps(valid_plan_payload())])
+    client = ScriptedClient(
+        [json.dumps(incomplete_payload), json.dumps(valid_plan_payload())]
+    )
 
     plan = request_investigation_plan(
         client,

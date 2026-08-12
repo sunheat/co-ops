@@ -2,8 +2,8 @@
 
 import json
 
-from packages.llm import ContextBlock, MessageBuilder
-from packages.rag import ContextBuilder, RetrievedChunk
+from packages.context import ContextBuilder, RetrievedChunk
+from packages.prompt import ContextBlock, MessageBuilder
 
 
 def main() -> None:
