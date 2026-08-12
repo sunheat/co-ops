@@ -2,7 +2,7 @@
 
 import json
 
-from packages.llm.prompt import ContextBlock, MessageBuilder, PromptTemplate
+from packages.prompt import ContextBlock, MessageBuilder, PromptTemplate
 
 
 def main() -> None:

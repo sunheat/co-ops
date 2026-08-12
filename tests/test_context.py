@@ -2,7 +2,19 @@
 
 import pytest
 
-from packages.rag import ContextBuilder, RetrievedChunk
+from packages.context import (
+    DEFAULT_MOCK_RETRIEVED_CHUNKS,
+    ContextBuilder,
+    RetrievedChunk,
+)
+from packages.rag.context import (
+    DEFAULT_MOCK_RETRIEVED_CHUNKS as LEGACY_DEFAULT_MOCK_RETRIEVED_CHUNKS,
+)
+
+
+def test_legacy_context_shim_preserves_default_retrieval_fixture():
+    """The compatibility path forwards the canonical default fixture."""
+    assert LEGACY_DEFAULT_MOCK_RETRIEVED_CHUNKS is DEFAULT_MOCK_RETRIEVED_CHUNKS
 
 
 def test_context_builder_builds_four_ordered_layers_with_mock_chunks():
