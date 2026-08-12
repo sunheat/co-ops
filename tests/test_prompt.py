@@ -2,8 +2,37 @@
 
 import pytest
 
+from packages import llm
+from packages.context import ContextBuilder, RetrievedChunk
 from packages.llm import ChatMessage
 from packages.prompt import ContextBlock, MessageBuilder, PromptTemplate
+from packages.structured_output import (
+    InvestigationPlan,
+    investigation_plan_correction_instruction,
+    investigation_plan_output_instruction,
+    parse_investigation_plan,
+    request_investigation_plan,
+)
+
+
+def test_llm_root_preserves_week_two_application_exports():
+    """The legacy package-root imports point to the new application modules."""
+    assert llm.ContextBlock is ContextBlock
+    assert llm.MessageBuilder is MessageBuilder
+    assert llm.PromptTemplate is PromptTemplate
+    assert llm.ContextBuilder is ContextBuilder
+    assert llm.RetrievedChunk is RetrievedChunk
+    assert llm.InvestigationPlan is InvestigationPlan
+    assert (
+        llm.investigation_plan_correction_instruction
+        is investigation_plan_correction_instruction
+    )
+    assert (
+        llm.investigation_plan_output_instruction
+        is investigation_plan_output_instruction
+    )
+    assert llm.parse_investigation_plan is parse_investigation_plan
+    assert llm.request_investigation_plan is request_investigation_plan
 
 
 def test_prompt_template_renders_named_values():

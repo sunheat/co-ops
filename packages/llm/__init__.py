@@ -1,5 +1,20 @@
 """Universal LLM client package."""
 
+from packages.context import (
+    BuiltContext,
+    ContextBuilder,
+    RetrievedChunk,
+    RetrievedContext,
+)
+from packages.prompt import ContextBlock, MessageBuilder, PromptTemplate
+from packages.structured_output import (
+    InvestigationPlan,
+    investigation_plan_correction_instruction,
+    investigation_plan_output_instruction,
+    parse_investigation_plan,
+    request_investigation_plan,
+)
+
 from .client import LLMClient, chat, close_default_router
 from .config import LLMSettings, ProviderConfig, load_settings
 from .errors import (
@@ -31,22 +46,30 @@ __all__ = [
     "PROVIDERS",
     "APIError",
     "AuthenticationError",
+    "BuiltContext",
     "ChatChoice",
     "ChatMessage",
     "ChatResponse",
     "ConfigError",
+    "ContextBlock",
+    "ContextBuilder",
     "InvalidResponseError",
+    "InvestigationPlan",
     "LLMClient",
     "LLMConnectionError",
     "LLMError",
     "LLMResponse",
     "LLMSettings",
     "LLMTimeoutError",
+    "MessageBuilder",
     "ModelPrice",
     "ModelRouter",
+    "PromptTemplate",
     "Provider",
     "ProviderConfig",
     "RateLimitError",
+    "RetrievedChunk",
+    "RetrievedContext",
     "UnknownProviderError",
     "Usage",
     "UsageLogEntry",
@@ -56,5 +79,9 @@ __all__ = [
     "close_default_router",
     "estimate_cost_usd",
     "get_provider",
+    "investigation_plan_correction_instruction",
+    "investigation_plan_output_instruction",
     "load_settings",
+    "parse_investigation_plan",
+    "request_investigation_plan",
 ]
