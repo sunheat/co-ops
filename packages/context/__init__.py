@@ -105,6 +105,7 @@ class ContextBuilder:
 
 
 __all__ = [
+    "DEFAULT_MOCK_RETRIEVED_CHUNKS",
     "BuiltContext",
     "ContextBuilder",
     "RetrievedChunk",
