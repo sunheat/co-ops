@@ -1,11 +1,12 @@
-# Week 01 — LLM Gateway
+# LLM Gateway
 
-Goal of the week: build a universal LLM gateway layer (`packages/llm`) that talks
-to any OpenAI-compatible model service through one unified interface.
+The LLM gateway layer (`packages/llm`) talks to any OpenAI-compatible model
+service through one unified interface.
 
 ## Why an LLM Gateway?
 
-Everything built later in this project (RAG, agents, evals) needs to call models.
+Everything built on top of this repository (RAG, agents, evals) needs to call
+models.
 Without a gateway, every module would duplicate the same concerns: endpoint
 differences, authentication, error handling, timeouts, retries, and cost
 tracking. The gateway centralizes those concerns once, so upper layers only

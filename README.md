@@ -79,7 +79,7 @@ generated live artifacts.
   JSON parsing or schema validation fails.
 - `examples.context_engineering_compare` compares naive, structured, and
   context-engineered prompts with versioned request/result artifacts and
-  typed scoring. See [the benchmark notes](docs/week-02-day-05-prompt-quality-benchmark.md).
+  typed scoring. See [the benchmark notes](docs/prompt-quality-benchmark.md).
 - `examples.litellm_spike` demonstrates the LiteLLM SDK separately from the
   local gateway. See [the LiteLLM comparison](docs/litellm-comparison.md).
 
@@ -107,8 +107,8 @@ migration:
 - domain-specific tool orchestration, citation/grounding checks, benchmark
   rubrics, and acceptance criteria.
 
-For the completed Week 2 answers and acceptance mapping, read
-[the Week 2 learning wiki](docs/week-02-learning-wiki.md).
+For a summary of what has been built so far, read
+[the project progress notes](docs/project-progress.md).
 
 ## Reliability and usage logs
 
@@ -122,5 +122,5 @@ LLM_RETRY_BASE_DELAY=0.5
 LLM_USAGE_LOG=logs/usage.jsonl
 ```
 
-See [the Day 6 notes](docs/day-06-reliability-and-usage.md) and the
+See [the LLM gateway overview](docs/llm-gateway.md) and the
 [usage log example](examples/usage_log.jsonl).
