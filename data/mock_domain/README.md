@@ -87,8 +87,8 @@ Naming conventions used across the corpus:
 - Venues: `SGX`, `ASX`, `HKEX` (fictional usage only).
 - Currencies: `SGD`, `AUD`, `HKD`, `USD`.
 
-The full SQL schema and data dictionary are provided in
-`data/sample_db/`.
+The full SQL schema and data dictionary will be provided in
+`data/sample_db/` in a subsequent data-fixture update.
 
 ## Problems the AI Assistant Should Solve
 
