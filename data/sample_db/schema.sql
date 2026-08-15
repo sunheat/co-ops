@@ -61,20 +61,30 @@ CREATE TABLE margin_runs (
     run_date     DATE        NOT NULL,
     venue        VARCHAR(8)  NOT NULL
                  CHECK (venue IN ('SGX', 'ASX', 'HKEX')),
+    base_currency VARCHAR(3) NOT NULL
+                  CHECK (
+                      (venue = 'SGX' AND base_currency = 'SGD')
+                      OR (venue = 'ASX' AND base_currency = 'AUD')
+                      OR (venue = 'HKEX' AND base_currency = 'HKD')
+                  ),
     status       VARCHAR(16) NOT NULL DEFAULT 'RUNNING'
                  CHECK (status IN ('RUNNING', 'COMPLETED', 'FAILED')),
     started_at   TIMESTAMP   NOT NULL,
-    finished_at  TIMESTAMP
+    finished_at  TIMESTAMP,
+    UNIQUE (run_id, base_currency)
 );
 
 -- Per-client results of a margin run; consumed by the Invoice Generator.
 CREATE TABLE margin_results (
-    run_id            VARCHAR(32)   NOT NULL REFERENCES margin_runs (run_id),
+    run_id            VARCHAR(32)   NOT NULL,
     client_id         VARCHAR(16)   NOT NULL REFERENCES clients (client_id),
     initial_margin    DECIMAL(18,2) NOT NULL,
     variation_margin  DECIMAL(18,2) NOT NULL,
-    currency          VARCHAR(3)    NOT NULL,           -- venue base currency
-    PRIMARY KEY (run_id, client_id)
+    currency          VARCHAR(3)    NOT NULL
+                      CHECK (currency IN ('SGD', 'AUD', 'HKD')),
+    PRIMARY KEY (run_id, client_id),
+    FOREIGN KEY (run_id, currency)
+        REFERENCES margin_runs (run_id, base_currency)
 );
 
 CREATE INDEX idx_margin_results_client ON margin_results (client_id);
@@ -85,7 +95,8 @@ CREATE TABLE invoices (
     client_id   VARCHAR(16)   NOT NULL REFERENCES clients (client_id),
     period      VARCHAR(7)    NOT NULL,                 -- YYYY-MM
     amount      DECIMAL(18,2) NOT NULL,
-    currency    VARCHAR(3)    NOT NULL,
+    currency    VARCHAR(3)    NOT NULL
+                CHECK (currency IN ('SGD', 'AUD', 'HKD', 'USD')),
     status      VARCHAR(16)   NOT NULL DEFAULT 'ISSUED'
                 CHECK (status IN ('ISSUED', 'DISPUTED', 'PAID', 'CANCELLED'))
 );

@@ -101,6 +101,7 @@
         "run_id": "MR-20240315-SGX",
         "run_date": "2024-03-15",
         "venue": "SGX",
+        "base_currency": "SGD",
         "status": "COMPLETED",
         "started_at": "2024-03-15T02:10:00",
         "finished_at": "2024-03-15T02:14:32"

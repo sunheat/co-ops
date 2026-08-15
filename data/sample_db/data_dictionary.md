@@ -96,6 +96,7 @@ One row per daily margin run per venue.
 | `run_id` | VARCHAR(32), PK | Run identifier, e.g. `MR-20240315-SGX`. |
 | `run_date` | DATE | Business date of the run. |
 | `venue` | VARCHAR(8) | Venue the run covers. |
+| `base_currency` | VARCHAR(3) | Venue base currency; constrained to `SGX→SGD`, `ASX→AUD`, or `HKEX→HKD`. |
 | `status` | VARCHAR(16) | `RUNNING`, `COMPLETED`, or `FAILED`. |
 | `started_at` | TIMESTAMP | Run start time. |
 | `finished_at` | TIMESTAMP, nullable | Run end time; NULL while running. |
@@ -106,11 +107,11 @@ Per-client figures produced by a margin run.
 
 | Column | Type | Description |
 | --- | --- | --- |
-| `run_id` | VARCHAR(32), FK → margin_runs | Run the result belongs to. Part of the PK. |
+| `run_id` | VARCHAR(32), composite FK → margin_runs | Run the result belongs to. Together with `currency`, references the run's base currency. Part of the PK. |
 | `client_id` | VARCHAR(16), FK → clients | Client the result belongs to. Part of the PK. |
 | `initial_margin` | DECIMAL(18,2) | Venue rate applied to gross notional, with portfolio offset where applicable. |
 | `variation_margin` | DECIMAL(18,2) | Daily mark-to-market change. |
-| `currency` | VARCHAR(3) | Venue base currency of the amounts. |
+| `currency` | VARCHAR(3), composite FK → margin_runs.base_currency | Venue base currency of the amounts; the schema enforces the run-venue mapping. |
 
 ### invoices
 
@@ -123,7 +124,7 @@ and `trades`.
 | `client_id` | VARCHAR(16), FK → clients | Billed client. |
 | `period` | VARCHAR(7) | Billing period, `YYYY-MM`. |
 | `amount` | DECIMAL(18,2) | Total billed amount. |
-| `currency` | VARCHAR(3) | Currency of the amount. |
+| `currency` | VARCHAR(3), CHECK | Currency of the amount; restricted to `SGD`, `AUD`, `HKD`, or `USD`. |
 | `status` | VARCHAR(16) | `ISSUED`, `DISPUTED`, `PAID`, or `CANCELLED`. Disputed invoices drive invoice-discrepancy tickets. |
 
 ### support_tickets
