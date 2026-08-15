@@ -65,6 +65,7 @@ This is a corpus fixture, not a runnable service:
 - No configuration management: venue rates and portfolio factors are
   constants in `MarginCalculator`.
 
-These limitations are expected at this stage. Subsequent corpus updates add
-the SQL schema, runbooks, tickets, and architecture docs that reference this
+These limitations are expected at this stage. The SQL schema and data
+dictionary are now available under `data/sample_db/`; subsequent corpus
+updates add the runbooks, tickets, and architecture docs that reference this
 service.

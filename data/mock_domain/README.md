@@ -87,8 +87,8 @@ Naming conventions used across the corpus:
 - Venues: `SGX`, `ASX`, `HKEX` (fictional usage only).
 - Currencies: `SGD`, `AUD`, `HKD`, `USD`.
 
-The full SQL schema and data dictionary will be provided in
-`data/sample_db/` in a subsequent data-fixture update.
+The full SQL schema and data dictionary are provided in
+`data/sample_db/`.
 
 ## Problems the AI Assistant Should Solve
 
@@ -115,7 +115,7 @@ The Co-Ops assistant is built to support this domain. Target capabilities:
 | --- | --- | --- |
 | `data/mock_domain/` | This domain definition | Delivered |
 | `data/sample_codebase/java/` | Mock `margin-service` Java sources | Delivered |
-| `data/sample_db/` | `schema.sql`, data dictionary, sample records | Planned |
+| `data/sample_db/` | `schema.sql`, data dictionary, sample records | Delivered |
 | `data/sample_docs/runbooks/` | Operational runbooks | Planned |
 | `data/sample_docs/tickets/` | Support tickets and incident notes | Planned |
 | `data/sample_docs/` | Architecture, data-flow, FAQ docs | Planned |
