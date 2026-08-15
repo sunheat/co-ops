@@ -65,7 +65,7 @@ public class MarginCalculator {
      */
     public MarginReport runMargin(LocalDate runDate, Venue venue,
                                   List<ClientAccount> accounts, List<Position> positions) {
-        Map<String, List<Position>> positionsByClient = groupByClient(positions, venue);
+        Map<String, List<Position>> positionsByClient = groupByClient(positions, venue, runDate);
 
         List<MarginReport.ClientMarginResult> results = new ArrayList<>();
         for (ClientAccount account : accounts) {
@@ -115,11 +115,12 @@ public class MarginCalculator {
         return variation.setScale(AMOUNT_SCALE, RoundingMode.HALF_UP);
     }
 
-    /** Groups the positions of the given venue by client identifier. */
-    private Map<String, List<Position>> groupByClient(List<Position> positions, Venue venue) {
+    /** Groups the positions of the given venue and run date by client identifier. */
+    private Map<String, List<Position>> groupByClient(List<Position> positions,
+                                                      Venue venue, LocalDate runDate) {
         Map<String, List<Position>> grouped = new LinkedHashMap<>();
         for (Position position : positions) {
-            if (position.venue() != venue) {
+            if (position.venue() != venue || !position.asOfDate().equals(runDate)) {
                 continue;
             }
             grouped.computeIfAbsent(position.clientId(), key -> new ArrayList<>()).add(position);
