@@ -1,6 +1,6 @@
-# Week 02 Day 05: Prompt Quality Benchmark
+# Prompt Quality Benchmark
 
-This exercise compares `naive`, `structured`, and `context_engineered` prompts on ten fixed evidence cases. The benchmark uses the versioned `context-engineering-benchmark-v2` artifact envelope and the `typed-answers-v3` rubric. It is an auditable learning fixture, not a general model leaderboard.
+This benchmark compares `naive`, `structured`, and `context_engineered` prompts on ten fixed evidence cases. It uses the versioned `context-engineering-benchmark-v2` artifact envelope and the `typed-answers-v3` rubric. The result is an auditable evaluation artifact, not a general model leaderboard.
 
 ## Typed Answer Contract
 
