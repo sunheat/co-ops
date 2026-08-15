@@ -21,10 +21,11 @@ venues:
 - invoice generation for clearing fees and margin calls;
 - fulfillment of settlement instructions to custodians and venues.
 
-ACFS runs as a mix of a Java service layer (margin and reconciliation),
-Python batch jobs (import, export, reporting), a relational database, and
-a nightly batch schedule. A small operations team supports it around the
-clock because a failed margin run can block morning reporting to venues.
+ACFS runs as a mix of a Java service layer (margin, reconciliation, and
+trade reporting), Python batch jobs (import, export, reporting), a
+relational database, and a nightly batch schedule. A small operations team
+supports it around the clock because a failed margin run can block morning
+reporting to venues.
 
 ## Core Modules
 
@@ -32,6 +33,7 @@ clock because a failed margin run can block morning reporting to venues.
 | --- | --- | --- |
 | Margin Service | Java | Calculates initial and variation margin per client account from positions, applies venue-specific rates, and writes `margin_results`. |
 | Trade Importer | Python batch | Parses nightly venue trade files, validates them, and loads records into `trades`. Rejects are written to a reject report. |
+| Trade Reporting Converter | Java | Receives broker trade messages (FIX), enriches and maps them against broker and instrument master data, and converts them into TRC009 regulatory messages (fictional format) for the risk monitoring system. |
 | Position Reconciler | Java | Aggregates client-level positions and compares them with venue aggregate positions; raises breaks on any mismatch. |
 | Invoice Generator | Python batch | Builds monthly clearing-fee and margin-call invoices from `margin_results` and `trades`, writes `invoices`. |
 | Fulfillment Adapter | Java | Converts approved settlement instructions into venue/custodian message formats and tracks acknowledgment status. |
