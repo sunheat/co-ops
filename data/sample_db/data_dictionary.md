@@ -79,13 +79,13 @@ operations analysts are a known source of reconciliation breaks.
 
 | Column | Type | Description |
 | --- | --- | --- |
-| `client_id` | VARCHAR(16), FK → clients | Client the position belongs to. |
-| `venue` | VARCHAR(8) | Venue the position is held at. |
-| `instrument` | VARCHAR(32) | Instrument code. |
+| `client_id` | VARCHAR(16), FK → clients, composite PK | Client the position belongs to. |
+| `venue` | VARCHAR(8), composite PK | Venue the position is held at. |
+| `instrument` | VARCHAR(32), composite PK | Instrument code. |
 | `quantity` | INTEGER | Signed quantity; negative for shorts. |
 | `last_price` | DECIMAL(18,4) | Latest mark price for the business date. |
 | `previous_close` | DECIMAL(18,4) | Previous day's close; basis for variation margin. |
-| `as_of_date` | DATE | Business date of the snapshot. Part of the PK. |
+| `as_of_date` | DATE, composite PK | Business date of the snapshot. |
 
 ### margin_runs
 
