@@ -41,8 +41,10 @@ match the stored `margin_results` rows.
   is the primary key of `margin_results`.
 - First stop invoice and reconciliation consumers, invalidate or quarantine
   any derived output that used the old results, and record the affected
-  executions for rerun. In one transaction, lock the existing run, replace
-  its `margin_results` rows, and mark the run `RUNNING`; complete the run and
+  executions for rerun. Preserve the prior completion metadata in the
+  incident record. In one transaction, lock the existing run, replace its
+  `margin_results` rows, set `started_at` to the rerun start time, clear
+  `finished_at` to `NULL`, and mark the run `RUNNING`; complete the run and
   set it back to `COMPLETED` only after every client result is present.
 - Rerun reconciliation and invoicing in order, and verify that no stale
   downstream output remains before morning reporting.
