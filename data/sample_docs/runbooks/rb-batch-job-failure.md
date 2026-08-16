@@ -39,9 +39,15 @@ without corrupting downstream state. The nightly order is: `trade_import` →
 
 ## Resolution Options
 
-- After the failed run is cleanly reset, rerun the job for the same business
-  date. The retry must transactionally replace any unconsumed partial
-  results before writing; the `(run_id, client_id)` key is not append-safe.
+- For a failed `trade_import`, follow the failed-trade-import runbook. Do not
+  replay the whole venue file after any rows have loaded; retain accepted
+  trades and reprocess only rejects that were resolved, or an explicitly
+  approved non-authoritative exception. Replaying accepted rows can collide
+  with the `trades.trade_id` primary key.
+- After a failed job other than `trade_import` is cleanly reset, rerun it for
+  the same business date. The retry must transactionally replace any
+  unconsumed partial results before writing; the `(run_id, client_id)` key is
+  not append-safe.
 - If a downstream job consumed the partial results, replace the margin
   results only after its derived output is invalidated, then rerun that job
   and every later job in order. Confirm that no stale output remains before
