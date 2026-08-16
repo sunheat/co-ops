@@ -35,11 +35,18 @@ import completes, so this runbook is time-critical.
 
 ## Resolution Options
 
-- Fix or quarantine the offending rows, then rerun the import for the batch.
-- After a successful import, restart downstream jobs in order: `margin_run`,
-  then `reconciliation`, then `invoicing` if it was skipped or blocked by
-  the import failure. Check each downstream `batch_jobs` status before
-  restarting so an already completed invoicing run is not repeated.
+- Fix the offending rows and reprocess every reject before unblocking the
+  batch. Quarantine alone is not sufficient for unknown-client or malformed
+  records because it can omit real exposure from positions and margin.
+- Quarantine a row without reprocessing only when the venue confirms that it
+  is a duplicate or otherwise non-authoritative record; retain that evidence
+  with the reject report and keep the batch blocked until the exception is
+  approved.
+- After a successful import, verify that every remaining reject has an
+  approved non-authoritative exception, then restart downstream jobs in order:
+  `margin_run`, then `reconciliation`, then `invoicing` if it was skipped or
+  blocked by the import failure. Check each downstream `batch_jobs` status
+  before restarting so an already completed invoicing run is not repeated.
 
 ## Escalation
 
