@@ -16,6 +16,9 @@ positions. All breaks must be resolved before morning reporting.
 
 - The venue, business date, and instrument of the break.
 - Read access to `positions` and `trades` for the affected date.
+- Access to the operations adjustment audit record, which is maintained
+  outside the ACFS schema; `positions` and `trades` do not store adjustment
+  identifiers or audit metadata.
 
 ## Investigation Steps
 
@@ -23,8 +26,10 @@ positions. All breaks must be resolved before morning reporting.
    `positions.quantity` over all clients for the venue and date.
 2. Compare the reconstruction with the venue aggregate from the venue file.
 3. Look for manual position adjustments applied after the last venue
-   submission; adjustments are a known break source and must carry an audit
-   trail.
+   submission, then check the operations adjustment audit record for the
+   matching client, instrument, and date. If the external record is missing,
+   treat it as an audit-control break and escalate before approving or
+   correcting the position.
 4. If the same instrument breaks on consecutive business dates, compare the
    break history across those dates and correlate it with one adjustment or
    venue submission before triaging each date independently.
@@ -49,3 +54,5 @@ cycle, or when a manual adjustment lacks an audit trail.
 - Code: `data/sample_codebase/java/margin-service/.../ReconciliationService.java`
 - Tables: `positions`, `trades`, `batch_jobs`
 - Batch job: `reconciliation`
+- External record: operations adjustment audit record (not stored in the ACFS
+  schema)

@@ -25,13 +25,14 @@ without corrupting downstream state. The nightly order is: `trade_import` →
    `margin_run` fails; a run left in `RUNNING` must be marked `FAILED` before
    any restart.
 3. Determine whether a downstream job consumed any partial output. If
-   `reconciliation` or a later job already consumed it, stop downstream
-   publication, mark each affected execution for rerun in `batch_jobs`, and
-   invalidate or quarantine its derived output before replacing the margin
-   results. Do not treat an output as safe merely because it was not published
-   to clients. If partial `margin_results` exist and were not consumed, remove
-   or replace them in the same transaction that prepares the retry. Never
-   append a second result set to the same `(run_id, client_id)` keys.
+   `Invoice Generator` or another documented downstream consumer already
+   consumed it, stop downstream publication, mark each affected execution for
+   rerun in `batch_jobs`, and invalidate or quarantine its derived output
+   before replacing the margin results. Do not treat an output as safe merely
+   because it was not published to clients. If partial `margin_results` exist
+   and were not consumed, remove or replace them in the same transaction that
+   prepares the retry. Never append a second result set to the same
+   `(run_id, client_id)` keys.
 4. For timeouts, determine whether the job is still doing real work before
    stopping it; a margin run near completion should usually be allowed to
    finish.
@@ -58,4 +59,4 @@ operations analysts whenever morning reporting is at risk.
 ## Related Artifacts
 
 - Tables: `batch_jobs`, `margin_runs`
-- Batch jobs: `trade_import`, `margin_run`, `reconciliation`
+- Batch jobs: `trade_import`, `margin_run`, `reconciliation`, `invoicing`
