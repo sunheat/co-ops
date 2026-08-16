@@ -37,7 +37,9 @@ import completes, so this runbook is time-critical.
 
 - Fix or quarantine the offending rows, then rerun the import for the batch.
 - After a successful import, restart downstream jobs in order: `margin_run`,
-  then `reconciliation`, per the batch-job-failure runbook.
+  then `reconciliation`, then `invoicing` if it was skipped or blocked by
+  the import failure. Check each downstream `batch_jobs` status before
+  restarting so an already completed invoicing run is not repeated.
 
 ## Escalation
 

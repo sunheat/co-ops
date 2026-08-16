@@ -21,18 +21,22 @@ without corrupting downstream state. The nightly order is: `trade_import` →
 
 1. Read the job log and record the failure class: input error, timeout, or
    infrastructure error.
-2. Check `margin_runs` for partially written state when `margin_run` fails;
-   a run left in `RUNNING` must be marked `FAILED` before any restart.
-3. Verify no downstream job consumed partial output of the failed job.
+2. Check `margin_runs` and `margin_results` for partially written state when
+   `margin_run` fails; a run left in `RUNNING` must be marked `FAILED` before
+   any restart.
+3. Verify no downstream job consumed partial output of the failed job. If
+   partial `margin_results` exist and were not consumed, remove or replace
+   them in the same transaction that prepares the retry. Never append a
+   second result set to the same `(run_id, client_id)` keys.
 4. For timeouts, determine whether the job is still doing real work before
    stopping it; a margin run near completion should usually be allowed to
    finish.
 
 ## Resolution Options
 
-- Restart the failed job for the same business date; jobs are designed to be
-  rerun for a date, and per-client results are keyed by run so reruns do not
-  duplicate rows.
+- After the failed run is cleanly reset, rerun the job for the same business
+  date. The retry must transactionally replace any unconsumed partial
+  results before writing; the `(run_id, client_id)` key is not append-safe.
 - Restart blocked downstream jobs in order after the failed job succeeds.
 - If the window cannot be recovered, notify operations analysts and defer
   morning reporting per the escalation policy.

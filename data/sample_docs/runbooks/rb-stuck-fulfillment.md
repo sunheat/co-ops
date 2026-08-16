@@ -30,8 +30,13 @@ never received an acknowledgment from the venue or custodian.
 
 ## Resolution Options
 
-- Resend the instruction with the same identifier; the adapter deduplicates
-  by identifier on the receiving side.
+- Before resending, confirm with the venue or custodian that the receiving
+  side deduplicates the instruction identifier, and record that evidence.
+  If confirmed, resend with the same identifier; receiver-side idempotency
+  belongs to the counterparty, not the adapter.
+- If receiver-side deduplication cannot be confirmed, do not resend. Escalate
+  to operations analysts and reconcile the instruction status with the
+  counterparty first.
 - If the counterparty confirms receipt out-of-band, mark the instruction
   acknowledged manually and record the exception.
 

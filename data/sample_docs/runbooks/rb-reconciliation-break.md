@@ -25,9 +25,12 @@ positions. All breaks must be resolved before morning reporting.
 3. Look for manual position adjustments applied after the last venue
    submission; adjustments are a known break source and must carry an audit
    trail.
-4. Check whether late or rejected trades (see the failed-trade-import
+4. If the same instrument breaks on consecutive business dates, compare the
+   break history across those dates and correlate it with one adjustment or
+   venue submission before triaging each date independently.
+5. Check whether late or rejected trades (see the failed-trade-import
    runbook) caused positions to lag the venue view.
-5. If a single client explains the whole difference, open a ticket against
+6. If a single client explains the whole difference, open a ticket against
    the Position Reconciler with the client and instrument.
 
 ## Resolution Options
