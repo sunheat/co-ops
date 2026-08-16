@@ -39,15 +39,18 @@ match the stored `margin_results` rows.
   start a second calculation with the same date and venue. `MarginCalculator`
   deterministically reuses the existing `run_id`, and `(run_id, client_id)`
   is the primary key of `margin_results`.
-- First stop invoice and reconciliation consumers, invalidate or quarantine
-  any derived output that used the old results, and record the affected
-  executions for rerun. Preserve the prior completion metadata in the
+- First stop Invoice Generator publication and notify the risk & compliance
+  consumers, invalidate or quarantine any derived output that used the old
+  results, and record the affected executions for rerun. Reconciliation does
+  not consume `margin_results`; include it only if the correction also changes
+  the underlying positions. Preserve the prior completion metadata in the
   incident record. In one transaction, lock the existing run, replace its
   `margin_results` rows, set `started_at` to the rerun start time, clear
   `finished_at` to `NULL`, and mark the run `RUNNING`; complete the run and
   set it back to `COMPLETED` only after every client result is present.
-- Rerun reconciliation and invoicing in order, and verify that no stale
-  downstream output remains before morning reporting.
+- Rerun invoicing after the corrected margin run. Rerun reconciliation only
+  when the underlying positions changed, and verify that no stale downstream
+  output remains before morning reporting.
 - If the venue figure is authoritative, raise a correction request and
   document the adjustment before morning reporting.
 
