@@ -35,7 +35,17 @@ match the stored `margin_results` rows.
 
 ## Resolution Options
 
-- Rerun the margin calculation for the venue after correcting inputs.
+- For a `COMPLETED` run whose inputs or results must be corrected, do not
+  start a second calculation with the same date and venue. `MarginCalculator`
+  deterministically reuses the existing `run_id`, and `(run_id, client_id)`
+  is the primary key of `margin_results`.
+- First stop invoice and reconciliation consumers, invalidate or quarantine
+  any derived output that used the old results, and record the affected
+  executions for rerun. In one transaction, lock the existing run, replace
+  its `margin_results` rows, and mark the run `RUNNING`; complete the run and
+  set it back to `COMPLETED` only after every client result is present.
+- Rerun reconciliation and invoicing in order, and verify that no stale
+  downstream output remains before morning reporting.
 - If the venue figure is authoritative, raise a correction request and
   document the adjustment before morning reporting.
 

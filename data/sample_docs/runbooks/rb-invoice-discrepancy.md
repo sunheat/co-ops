@@ -2,8 +2,10 @@
 
 ## Purpose
 
-Trace a disputed invoice line back to the margin runs and trades that
-produced it, and correct or confirm the billed amount.
+Trace a disputed invoice total, or an externally rendered invoice line, back
+to the margin runs and trades that produced it, and correct or confirm the
+billed amount. The `invoices` table stores only the aggregate amount; invoice
+lines are not stored in it.
 
 ## When To Use
 
@@ -14,27 +16,37 @@ produced it, and correct or confirm the billed amount.
 
 - The invoice identifier and the disputed period, e.g. `2024-02`.
 - Read access to `invoices`, `margin_results`, `margin_runs`, and `trades`.
+- The original invoice export or Invoice Generator trace log when the client
+  disputes a particular line. Without that external artifact, the repository
+  data can support only an aggregate-total investigation.
 
 ## Investigation Steps
 
-1. Identify the disputed line: clearing fee or margin call, amount, and
-   period.
-2. Enumerate the margin runs for the period and venue from `margin_runs`,
+1. From the invoice export or generator trace, identify the disputed
+   component: clearing fee or margin call, amount, and period. Do not infer a
+   line item from `invoices.amount`.
+2. Verify the invoice row and enumerate the margin runs for the period and
+   venue from `margin_runs`,
    and sum the client's `margin_results` rows for those runs.
 3. For clearing fees, recompute the fee base from the client's `trades` in
-   the period.
-4. Compare the recomputed amount with the invoice line. Note any reruns or
-   corrected runs in the period, which can double-count if the invoice was
-   built from stale results.
+   the period and obtain the configured fee rule from the generator evidence.
+   If no fee rule or line-level trace is available, stop short of claiming a
+   recomputed fee and escalate the evidence gap.
+4. Compare the available recomputed total with `invoices.amount`. Note any
+   reruns or corrected runs in the period, which can double-count if the
+   invoice was built from stale results.
 5. Check whether a margin mismatch investigation (see the margin-result-
    mismatch runbook) is open for the client; invoice disputes frequently
    share a root cause with margin mismatches.
 
 ## Resolution Options
 
-- If the amount is wrong, cancel the invoice (`CANCELLED`) and reissue.
-- If the amount is correct, reply to the client with the trace from invoice
-  line to runs and trades, and set the invoice back to `ISSUED`.
+- If the aggregate amount is wrong, cancel the invoice (`CANCELLED`) and
+  reissue it; preserve any line-level breakdown in the external invoice
+  artifact rather than inventing rows in `invoices`.
+- If the aggregate amount is correct, reply to the client with the available
+  trace from the invoice export or total to runs and trades, and set the
+  invoice back to `ISSUED`.
 
 ## Escalation
 
