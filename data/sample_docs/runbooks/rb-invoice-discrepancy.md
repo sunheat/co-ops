@@ -42,12 +42,16 @@ lines are not stored in it.
    from the generator evidence.
    If no fee rule or line-level trace is available, stop short of claiming a
    recomputed fee and escalate the evidence gap.
-4. Apply the recorded FX/conversion evidence to each currency group and
-   compare the converted total with `invoices.amount` in the invoice currency.
-   If the evidence is unavailable, do not compare a mixed-currency total or
-   cancel/confirm the invoice; escalate the evidence gap. Note any reruns or
-   corrected runs in the period, which can double-count if the invoice was
-   built from stale results.
+4. Apply the recorded FX/conversion evidence to each currency group. For the
+   disputed component, compare the converted recomputed amount with the
+   corresponding line in the invoice export or generator trace; do not compare
+   a single component directly with `invoices.amount`. Compare with
+   `invoices.amount` only after reconstructing every billed component for the
+   period and converting them into the invoice currency. If the evidence is
+   unavailable, do not compare a mixed-currency total or cancel/confirm the
+   invoice; escalate the evidence gap. Note any reruns or corrected runs in
+   the period, which can double-count if the invoice was built from stale
+   results.
 5. Check whether a margin mismatch investigation (see the margin-result-
    mismatch runbook) is open for the client; invoice disputes frequently
    share a root cause with margin mismatches.
