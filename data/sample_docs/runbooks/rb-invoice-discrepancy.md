@@ -19,6 +19,9 @@ lines are not stored in it.
 - The original invoice export or Invoice Generator trace log when the client
   disputes a particular line. Without that external artifact, the repository
   data can support only an aggregate-total investigation.
+- The Invoice Generator's recorded margin-call calculation evidence for a
+  disputed margin-call component, including the selected margin fields and
+  business-date scope. Do not infer the billing rule from `margin_results`.
 - The invoice currency and the Invoice Generator's recorded FX/conversion
   evidence for any multi-venue or non-venue-currency invoice.
 
@@ -26,7 +29,10 @@ lines are not stored in it.
 
 1. From the invoice export or generator trace, identify the disputed
    component: clearing fee or margin call, amount, and period. Do not infer a
-   line item from `invoices.amount`.
+   line item from `invoices.amount`. For a margin-call component, use the
+   recorded generator evidence to identify the margin fields and business-date
+   scope that were billed; if that evidence is unavailable, stop short of
+   claiming that the amount is correct and escalate the evidence gap.
 2. Verify the invoice row and its currency. Enumerate the margin runs for the
    period and venue from `margin_runs`, then group the client's
    `margin_results` rows by their `currency`. Never sum rows from different
