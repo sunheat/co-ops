@@ -40,7 +40,14 @@ positions. All breaks must be resolved before morning reporting.
 
 ## Resolution Options
 
-- Correct the client position and rerun reconciliation.
+- Correct the client position only after recording the adjustment audit. Before
+  rerunning reconciliation, invalidate or quarantine any `margin_results`,
+  invoice, and risk/compliance output derived from the old position. Rerun
+  `margin_run` for the affected venue and date, transactionally replacing its
+  `margin_results` rows and waiting for every client result before marking the
+  run `COMPLETED`; then rerun reconciliation. Rerun invoicing and other
+  downstream consumers after the corrected margin results, and verify that no
+  stale output remains before morning reporting.
 - If the venue aggregate is wrong, file a venue query and record the break
   as pending-venue rather than adjusting ACFS data.
 
