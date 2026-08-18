@@ -38,6 +38,14 @@ import completes, so this runbook is time-critical.
 - Fix the offending rows and reprocess every reject before unblocking the
   batch. Quarantine alone is not sufficient for unknown-client or malformed
   records because it can omit real exposure from positions and margin.
+- When the venue confirms that the incoming copy of a duplicate `trade_id` is
+  authoritative, lock the existing `trades` row and atomically replace its
+  incoming fields (`client_id`, `venue`, `instrument`, `quantity`, `price`,
+  `trade_date`, and `import_batch`) while retaining the same `trade_id`. Record
+  the prior and replacement values, together with the venue's authority
+  evidence, in the reject report or operations audit record, then reprocess
+  that reject. Do not delete and insert a second row: the primary key would
+  still collide.
 - Quarantine a row without reprocessing only when the venue confirms that it
   is a duplicate or otherwise non-authoritative record; retain that evidence
   with the reject report and keep the batch blocked until the exception is
