@@ -43,9 +43,10 @@ import completes, so this runbook is time-critical.
   incoming fields (`client_id`, `venue`, `instrument`, `quantity`, `price`,
   `trade_date`, and `import_batch`) while retaining the same `trade_id`. Record
   the prior and replacement values, together with the venue's authority
-  evidence, in the reject report or operations audit record, then reprocess
-  that reject. Do not delete and insert a second row: the primary key would
-  still collide.
+  evidence, in the reject report or operations audit record, then mark the
+  reject resolved after the replacement succeeds. Do not send that reject
+  through the importer again, and do not delete and insert a second row: the
+  primary key would still collide.
 - Quarantine a row without reprocessing only when the venue confirms that it
   is a duplicate or otherwise non-authoritative record; retain that evidence
   with the reject report and keep the batch blocked until the exception is
