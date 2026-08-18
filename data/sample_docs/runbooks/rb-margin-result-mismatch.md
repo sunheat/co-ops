@@ -48,9 +48,14 @@ match the stored `margin_results` rows.
   `margin_results` rows, set `started_at` to the rerun start time, clear
   `finished_at` to `NULL`, and mark the run `RUNNING`; complete the run and
   set it back to `COMPLETED` only after every client result is present.
-- Rerun invoicing after the corrected margin run. Rerun reconciliation only
-  when the underlying positions changed, and verify that no stale downstream
-  output remains before morning reporting.
+- Before rerunning invoicing, check whether any affected invoice is `PAID`.
+  For a paid invoice, require client services to record either a
+  credit/refund for the original payment or an explicit payment transfer to
+  the replacement. If that payment-handling evidence is missing, do not
+  cancel and reissue the invoice; leave it unchanged and escalate. Rerun
+  invoicing only after the payment handling is documented. Rerun
+  reconciliation only when the underlying positions changed, and verify that
+  no stale downstream output remains before morning reporting.
 - If the venue figure is authoritative, raise a correction request and
   document the adjustment before morning reporting.
 
