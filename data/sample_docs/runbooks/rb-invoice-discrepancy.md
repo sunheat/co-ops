@@ -33,10 +33,13 @@ lines are not stored in it.
    recorded generator evidence to identify the margin fields and business-date
    scope that were billed; if that evidence is unavailable, stop short of
    claiming that the amount is correct and escalate the evidence gap.
-2. Verify the invoice row and its currency. Enumerate the margin runs for the
-   period and venue from `margin_runs`, then group the client's
-   `margin_results` rows by their `currency`. Never sum rows from different
-   currencies before conversion.
+2. Verify the invoice row and its currency. From the generator evidence,
+   identify every venue and run/date scope included in the invoice, then
+   enumerate the matching `margin_runs` rows for each covered venue. If the
+   covered venues cannot be established, stop and escalate rather than
+   reconstructing a partial total. Group the client's `margin_results` rows
+   by their `currency`; never sum rows from different currencies before
+   conversion.
 3. For clearing fees, recompute the fee base from the client's `trades` in
    the period grouped by venue currency, and obtain the configured fee rule
    from the generator evidence.
@@ -58,9 +61,14 @@ lines are not stored in it.
 
 ## Resolution Options
 
-- If the aggregate amount is wrong, cancel the invoice (`CANCELLED`) and
-  reissue it; preserve any line-level breakdown in the external invoice
-  artifact rather than inventing rows in `invoices`.
+- If the aggregate amount is wrong, preserve any line-level breakdown in the
+  external invoice artifact rather than inventing rows in `invoices`. For a
+  `PAID` invoice, do not cancel and reissue until client services records
+  either a credit/refund for the original payment or an explicit payment
+  transfer to the replacement. If that payment-handling evidence is missing,
+  leave the invoice status unchanged and escalate. Once the payment handling
+  is documented, or for an unpaid invoice, cancel it (`CANCELLED`) and reissue
+  the corrected amount.
 - If the aggregate amount is correct, reply to the client with the available
   trace from the invoice export or total to runs and trades, and restore the
   status recorded before the dispute (for example, `PAID` in TKT-2024-007),
