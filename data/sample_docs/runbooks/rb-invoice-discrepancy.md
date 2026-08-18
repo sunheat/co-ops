@@ -62,13 +62,17 @@ lines are not stored in it.
 ## Resolution Options
 
 - If the aggregate amount is wrong, preserve any line-level breakdown in the
-  external invoice artifact rather than inventing rows in `invoices`. For a
-  `PAID` invoice, do not cancel and reissue until client services records
-  either a credit/refund for the original payment or an explicit payment
-  transfer to the replacement. If that payment-handling evidence is missing,
-  leave the invoice status unchanged and escalate. Once the payment handling
-  is documented, or for an unpaid invoice, cancel it (`CANCELLED`) and reissue
-  the corrected amount.
+  external invoice artifact rather than inventing rows in `invoices`. First
+  determine the invoice's status immediately before the dispute from the
+  original invoice export or payment evidence; the current `invoices.status`
+  may already be `DISPUTED` and must not be treated as proof that the invoice
+  was unpaid. For a pre-dispute `PAID` invoice, do not cancel and reissue
+  until client services records either a credit/refund for the original
+  payment or an explicit payment transfer to the replacement. If that
+  payment-handling evidence is missing, or the pre-dispute status cannot be
+  evidenced, leave the invoice status unchanged and escalate. Once the
+  payment handling is documented, or a pre-dispute unpaid status is evidenced,
+  cancel it (`CANCELLED`) and reissue the corrected amount.
 - If the aggregate amount is correct, reply to the client with the available
   trace from the invoice export or total to runs and trades, and restore the
   status recorded before the dispute (for example, `PAID` in TKT-2024-007),
