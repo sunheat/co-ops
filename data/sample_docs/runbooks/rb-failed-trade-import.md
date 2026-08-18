@@ -47,6 +47,15 @@ import completes, so this runbook is time-critical.
   reject resolved after the replacement succeeds. Do not send that reject
   through the importer again, and do not delete and insert a second row: the
   primary key would still collide.
+- If the replacement changes a business or financial field, identify both the
+  original and replacement venue/date/client/instrument scopes. Invalidate and
+  rebuild the affected `positions` rows, then invalidate and recompute the
+  downstream `margin_results` and risk/compliance output derived from the old
+  trade values. Stop invoice publication and apply the paid-invoice
+  payment-handling safeguards before changing or replacing any affected
+  invoice. Rerun `margin_run`, `reconciliation`, and `invoicing` for each
+  affected scope in order; do not limit the recovery to the currently failed
+  import batch.
 - Quarantine a row without reprocessing only when the venue confirms that it
   is a duplicate or otherwise non-authoritative record; retain that evidence
   with the reject report and keep the batch blocked until the exception is
