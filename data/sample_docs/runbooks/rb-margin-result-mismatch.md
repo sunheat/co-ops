@@ -49,14 +49,17 @@ match the stored `margin_results` rows.
   deterministically reuses the existing `run_id`, and `(run_id, client_id)`
   is the primary key of `margin_results`.
 - First stop Invoice Generator publication and notify the risk & compliance
-  consumers, invalidate or quarantine any derived output that used the old
-  results, and record the affected executions for rerun. Reconciliation does
-  not consume `margin_results`; include it only if the correction also changes
-  the underlying positions. Preserve the prior completion metadata in the
-  incident record. In one transaction, lock the existing run, replace its
-  `margin_results` rows, set `started_at` to the rerun start time, clear
-  `finished_at` to `NULL`, and mark the run `RUNNING`; complete the run and
-  set it back to `COMPLETED` only after every client result is present.
+  consumers. Invalidate or quarantine the affected `margin_results` and
+  non-invoice risk/compliance output derived from the old results, and record
+  the affected executions for rerun. Do not invalidate or quarantine any
+  invoice row or rendered invoice artifact until the payment-state safeguard
+  below passes. Reconciliation does not consume `margin_results`; include it
+  only if the correction also changes the underlying positions. Preserve the
+  prior completion metadata in the incident record. In one transaction, lock
+  the existing run, replace its `margin_results` rows, set `started_at` to the
+  rerun start time, clear `finished_at` to `NULL`, and mark the run `RUNNING`;
+  complete the run and set it back to `COMPLETED` only after every client
+  result is present.
 - Before rerunning invoicing, determine each affected invoice's status
   immediately before the dispute from the original invoice export or payment
   evidence; the current `invoices.status` may already be `DISPUTED` and must
