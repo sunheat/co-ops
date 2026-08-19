@@ -52,10 +52,15 @@ import completes, so this runbook is time-critical.
   through the importer again, and do not delete and insert a second row: the
   primary key would still collide.
 - If the replacement changes a business or financial field, identify both the
-  original and replacement venue/date/client/instrument scopes. Invalidate and
-  rebuild the affected `positions` rows, and invalidate the downstream
-  `margin_results` and risk/compliance output derived from the old trade
-  values. Stop invoice publication and apply the paid-invoice
+  original and replacement venue/date/client/instrument scopes. For each
+  impacted client/venue/instrument, enumerate every later `positions` snapshot
+  from the earliest affected trade date through the last `as_of_date` carrying
+  the corrected position, or until that position closes. Rebuild all of those
+  snapshots from the corrected trade state; do not stop at the original and
+  replacement trade-date rows. Invalidate the downstream `margin_results`,
+  reconciliation, risk/compliance, and invoice output derived from the old
+  trade values for every affected venue/date. Stop invoice publication and
+  apply the paid-invoice
   payment-handling safeguards before changing or replacing any affected
   invoice. For each affected scope with a prior completed `margin_runs` row,
   apply the completed-run protocol from the margin-result-mismatch runbook:
@@ -65,8 +70,8 @@ import completes, so this runbook is time-critical.
   this import failure and no prior completed run exists, do not lock a missing
   row; after the import succeeds, start the linked `margin_run` through the
   normal scheduler path, then run `reconciliation` and `invoicing` in order.
-  Apply this decision to every affected scope, not only the current import
-  batch.
+  Apply this decision to every affected venue/date, including later
+  carry-forward snapshots, not only the current import batch.
 - Quarantine a row without reprocessing only when the venue confirms that it
   is a duplicate or otherwise non-authoritative record; retain that evidence
   with the reject report and keep the batch blocked until the exception is
