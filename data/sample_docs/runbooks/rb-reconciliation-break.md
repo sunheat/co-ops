@@ -43,16 +43,17 @@ positions. All breaks must be resolved before morning reporting.
 - Correct the client position only after recording the adjustment audit. Before
   rerunning reconciliation, stop Invoice Generator publication and the
   risk/compliance consumers. Before changing any affected invoice state,
-  determine its status immediately before the dispute from the original
-  invoice export or payment evidence; the current `invoices.status` may
-  already be `DISPUTED` and must not be treated as proof that the invoice was
-  unpaid. For a pre-dispute `PAID` invoice, require client services to record
-  either a credit/refund for the original payment or an explicit payment
-  transfer to the replacement before any later replacement. If that
-  payment-handling evidence is missing, or the pre-dispute status cannot be
-  evidenced, leave the invoice row unchanged, do not invalidate, quarantine,
-  or cancel it, and escalate. Record a documented pre-dispute unpaid invoice
-  as eligible for replacement.
+  determine its status immediately before the dispute, or immediately before
+  this correction when no client dispute exists, from the original invoice
+  export or payment evidence. The current `invoices.status` may already be
+  `DISPUTED` and must not be treated as proof that the invoice was unpaid. For
+  a `PAID` invoice at that baseline, require client services to record either
+  a credit/refund for the original payment or an explicit payment transfer to
+  the replacement before any later replacement. If that payment-handling
+  evidence is missing, or the baseline status cannot be evidenced, leave the
+  invoice row unchanged, do not invalidate, quarantine, or cancel it, and
+  escalate. Record a documented unpaid invoice at the baseline as eligible for
+  replacement.
   Invalidate or quarantine the affected `margin_results` and risk/compliance
   output derived from the old position. For an already `COMPLETED` margin run,
   in one transaction lock the existing `margin_runs` row, preserve its prior
@@ -62,8 +63,8 @@ positions. All breaks must be resolved before morning reporting.
   `margin_run` for the affected venue and date; let the calculation publish the
   complete replacement set, and mark the run `COMPLETED` only after every
   client result is present. Then rerun reconciliation. Rerun
-  invoicing only after the payment handling is documented for a pre-dispute
-  `PAID` invoice or a pre-dispute unpaid status is evidenced. Rerun other
+  invoicing only after the payment handling is documented for a baseline
+  `PAID` invoice or a baseline unpaid status is evidenced. Rerun other
   downstream consumers after the corrected margin results, and verify that no
   stale output remains before morning reporting.
 - If the venue aggregate is wrong, file a venue query and record the break
