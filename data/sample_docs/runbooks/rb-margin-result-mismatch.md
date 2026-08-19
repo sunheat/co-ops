@@ -65,15 +65,16 @@ match the stored `margin_results` rows.
   complete the run and set it back to `COMPLETED` only after every client
   result is present.
 - Before rerunning invoicing, determine each affected invoice's status
-  immediately before the dispute from the original invoice export or payment
-  evidence; the current `invoices.status` may already be `DISPUTED` and must
-  not be treated as proof that the invoice was unpaid. For a pre-dispute
-  `PAID` invoice, require client services to record either a credit/refund for
+  immediately before the dispute, or immediately before the correction when
+  no client dispute exists, from the original invoice export or payment
+  evidence. The current `invoices.status` may already be `DISPUTED` and must
+  not be treated as proof that the invoice was unpaid. For a `PAID` invoice at
+  that baseline, require client services to record either a credit/refund for
   the original payment or an explicit payment transfer to the replacement. If
-  that payment-handling evidence is missing, or the pre-dispute status cannot
-  be evidenced, do not cancel and reissue the invoice; leave it unchanged and
+  that payment-handling evidence is missing, or the baseline status cannot be
+  evidenced, do not cancel and reissue the invoice; leave it unchanged and
   escalate. Rerun invoicing only after the payment handling is documented or a
-  pre-dispute unpaid status is evidenced. Rerun reconciliation only when the
+  baseline unpaid status is evidenced. Rerun reconciliation only when the
   underlying positions changed, and verify that no stale downstream output
   remains before morning reporting.
 - If the venue figure is authoritative, raise a correction request and
