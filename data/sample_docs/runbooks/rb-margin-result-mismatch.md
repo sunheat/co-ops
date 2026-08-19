@@ -30,9 +30,13 @@ match the stored `margin_results` rows.
    current `positions` row after a later correction. If the execution-time
    snapshot cannot be evidenced, stop short of confirming a historical
    mismatch or triggering a rerun and escalate the evidence gap.
-3. Check `clients.margin_model`: a `PORTFOLIO` account receives a
-   diversification offset that venues may not apply. This is a frequent root
-   cause of aggregate mismatches.
+3. Obtain the execution-time account evidence used by the run, including the
+   affected client's `margin_model`. Use that recorded model when assessing
+   the result: a `PORTFOLIO` account receives a diversification offset that
+   venues may not apply. Do not substitute the current `clients.margin_model`
+   after a later account change. If the execution-time account evidence is
+   unavailable, stop short of confirming a historical mismatch or triggering
+   a rerun and escalate the evidence gap.
 4. Verify the position snapshot: late trade imports or manual adjustments
    after the margin run change `positions` without retriggering the run.
 5. For a historical run, obtain the venue rate and calculation-version
