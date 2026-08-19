@@ -71,8 +71,14 @@ lines are not stored in it.
   payment or an explicit payment transfer to the replacement. If that
   payment-handling evidence is missing, or the pre-dispute status cannot be
   evidenced, leave the invoice status unchanged and escalate. Once the
-  payment handling is documented, or a pre-dispute unpaid status is evidenced,
-  cancel it (`CANCELLED`) and reissue the corrected amount.
+  payment handling is documented, obtain current payment evidence immediately
+  before cancellation or reissue. Treat any payment received after the
+  dispute opened as paid: do not cancel or reissue until a credit, refund, or
+  payment transfer is recorded. A pre-dispute unpaid invoice is eligible for
+  replacement only when current evidence also shows that no intervening
+  payment was received; if current payment state cannot be evidenced, leave
+  the invoice status unchanged and escalate. Otherwise, cancel it
+  (`CANCELLED`) and reissue the corrected amount.
 - If the aggregate amount is correct but any component line is wrong, preserve
   `invoices.amount` and correct or re-render the external invoice breakdown
   from the recorded generator and conversion evidence before replying to the
