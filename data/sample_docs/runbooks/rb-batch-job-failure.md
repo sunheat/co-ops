@@ -30,13 +30,19 @@ without corrupting downstream state. The nightly order is: `trade_import` →
    any restart.
 3. Determine whether a downstream job consumed any partial output. If
    `Invoice Generator` or another documented downstream consumer already
-   consumed it, stop downstream publication, mark each affected execution for
-   rerun in `batch_jobs`, and invalidate or quarantine its derived output
-   before replacing the margin results. Do not treat an output as safe merely
-   because it was not published to clients. If partial `margin_results` exist
-   and were not consumed, remove or replace them in the same transaction that
-   prepares the retry. Never append a second result set to the same
-   `(run_id, client_id)` keys.
+   consumed it, stop downstream publication and mark each affected execution
+   for rerun in `batch_jobs`. For an invoice-consuming path, before changing
+   any invoice row or rendered artifact, determine the current payment
+   evidence and the status immediately before the dispute, or immediately
+   before the correction/retry when no dispute exists. Preserve paid or
+   payment-state-unknown output until a credit, refund, or explicit payment
+   transfer is recorded; a pre-action unpaid invoice is eligible for
+   replacement only when current evidence shows no intervening payment. Until
+   that safeguard passes, invalidate or quarantine only non-invoice derived
+   output. Do not treat an output as safe merely because it was not published
+   to clients. If partial `margin_results` exist and were not consumed, remove
+   or replace them in the same transaction that prepares the retry. Never
+   append a second result set to the same `(run_id, client_id)` keys.
 4. For timeouts, determine whether the job is still doing real work before
    stopping it; a margin run near completion should usually be allowed to
    finish.
