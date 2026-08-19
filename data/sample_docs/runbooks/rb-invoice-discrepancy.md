@@ -73,11 +73,18 @@ lines are not stored in it.
   evidenced, leave the invoice status unchanged and escalate. Once the
   payment handling is documented, or a pre-dispute unpaid status is evidenced,
   cancel it (`CANCELLED`) and reissue the corrected amount.
-- If the aggregate amount is correct, reply to the client with the available
-  trace from the invoice export or total to runs and trades, and restore the
-  status recorded before the dispute (for example, `PAID` in TKT-2024-007),
-  rather than hard-coding `ISSUED`. If the prior status is not evidenced,
-  leave the row `DISPUTED` and escalate.
+- If the aggregate amount is correct but any component line is wrong, preserve
+  `invoices.amount` and correct or re-render the external invoice breakdown
+  from the recorded generator and conversion evidence before replying to the
+  client. Do not close the dispute based only on the balanced total; restore
+  the status recorded before the dispute only after the corrected breakdown is
+  available. If the prior status is not evidenced, leave the row `DISPUTED`
+  and escalate.
+- If the aggregate amount and every component line are correct, reply to the
+  client with the available trace from the invoice export or total to runs and
+  trades, and restore the status recorded before the dispute (for example,
+  `PAID` in TKT-2024-007), rather than hard-coding `ISSUED`. If the prior
+  status is not evidenced, leave the row `DISPUTED` and escalate.
 
 ## Escalation
 
