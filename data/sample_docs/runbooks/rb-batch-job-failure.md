@@ -49,11 +49,15 @@ without corrupting downstream state. The nightly order is: `trade_import` →
   approved non-authoritative exception. Replaying accepted rows can collide
   with the `trades.trade_id` primary key.
 - For a failed `margin_run`, preserve the failed execution metadata in the
-  incident record. In one transaction, lock the existing deterministic
-  `margin_runs` row, replace any partial `margin_results` rows, set
+  incident record. If the deterministic `margin_runs` row exists, in one
+  transaction lock it, replace any partial `margin_results` rows, set
   `started_at` to the retry start time, clear `finished_at` to `NULL`, and mark
-  the run `RUNNING`. Set `finished_at` to the retry completion time and mark
-  the run `COMPLETED` only after every client result is present.
+  the run `RUNNING`. If the failure occurred before that row was persisted, do
+  not attempt to lock a missing row; after the scoped prerequisites are clear,
+  start `margin_run` through the normal Scheduler creation path so it creates
+  the deterministic row and marks it `RUNNING` before writing results. In both
+  cases, set `finished_at` to the retry completion time and mark the run
+  `COMPLETED` only after every client result is present.
 - After a failed job other than `trade_import` is cleanly reset, rerun it for
   the same business date. The retry must transactionally replace any
   unconsumed partial results before writing; the `(run_id, client_id)` key is
