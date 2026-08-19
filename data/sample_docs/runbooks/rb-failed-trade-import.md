@@ -57,12 +57,16 @@ import completes, so this runbook is time-critical.
   `margin_results` and risk/compliance output derived from the old trade
   values. Stop invoice publication and apply the paid-invoice
   payment-handling safeguards before changing or replacing any affected
-  invoice. For each affected scope, apply the completed-run protocol from the
-  margin-result-mismatch runbook: lock the deterministic `margin_runs` row,
-  mark it `RUNNING`, reset `started_at` and `finished_at`, replace its
-  `margin_results`, and mark it `COMPLETED` only after every client result is
-  present. Then rerun `reconciliation` and `invoicing` for each scope in
-  order; do not limit the recovery to the currently failed import batch.
+  invoice. For each affected scope with a prior completed `margin_runs` row,
+  apply the completed-run protocol from the margin-result-mismatch runbook:
+  lock the deterministic row, mark it `RUNNING`, reset `started_at` and
+  `finished_at`, replace its `margin_results`, and mark it `COMPLETED` only
+  after every client result is present. If downstream jobs were blocked by
+  this import failure and no prior completed run exists, do not lock a missing
+  row; after the import succeeds, start the linked `margin_run` through the
+  normal scheduler path, then run `reconciliation` and `invoicing` in order.
+  Apply this decision to every affected scope, not only the current import
+  batch.
 - Quarantine a row without reprocessing only when the venue confirms that it
   is a duplicate or otherwise non-authoritative record; retain that evidence
   with the reject report and keep the batch blocked until the exception is
