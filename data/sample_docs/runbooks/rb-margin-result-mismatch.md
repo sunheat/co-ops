@@ -73,10 +73,16 @@ match the stored `margin_results` rows.
   the original payment or an explicit payment transfer to the replacement. If
   that payment-handling evidence is missing, or the baseline status cannot be
   evidenced, do not cancel and reissue the invoice; leave it unchanged and
-  escalate. Rerun invoicing only after the payment handling is documented or a
-  baseline unpaid status is evidenced. Rerun reconciliation only when the
-  underlying positions changed, and verify that no stale downstream output
-  remains before morning reporting.
+  escalate. Obtain current payment evidence immediately before any
+  cancellation or reissue. Treat any payment received since the baseline as
+  paid: do not cancel or reissue until a credit, refund, or payment transfer is
+  recorded. A baseline unpaid invoice is eligible for replacement only when
+  current evidence also shows no intervening payment; if current payment state
+  cannot be evidenced, leave the invoice unchanged and escalate. Rerun
+  invoicing only after the payment handling is documented or a baseline unpaid
+  status with no intervening payment is evidenced. Rerun reconciliation only
+  when the underlying positions changed, and verify that no stale downstream
+  output remains before morning reporting.
 - If the venue figure is authoritative, raise a correction request and
   document the adjustment before morning reporting.
 
