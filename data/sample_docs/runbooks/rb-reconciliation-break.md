@@ -56,11 +56,12 @@ positions. All breaks must be resolved before morning reporting.
   Invalidate or quarantine the affected `margin_results` and risk/compliance
   output derived from the old position. For an already `COMPLETED` margin run,
   in one transaction lock the existing `margin_runs` row, preserve its prior
-  completion metadata in the incident record, replace its `margin_results`
-  rows, set `started_at` to the rerun start time, clear `finished_at` to
-  `NULL`, and mark the run `RUNNING`; rerun `margin_run` for the affected
-  venue and date, and mark it `COMPLETED` only after every client result is
-  present. Then rerun reconciliation. Rerun
+  completion metadata in the incident record, set `started_at` to the rerun
+  start time, clear `finished_at` to `NULL`, mark the run `RUNNING`, and delete
+  its stale `margin_results` rows. Commit that reset before executing
+  `margin_run` for the affected venue and date; let the calculation publish the
+  complete replacement set, and mark the run `COMPLETED` only after every
+  client result is present. Then rerun reconciliation. Rerun
   invoicing only after the payment handling is documented for a pre-dispute
   `PAID` invoice or a pre-dispute unpaid status is evidenced. Rerun other
   downstream consumers after the corrected margin results, and verify that no
