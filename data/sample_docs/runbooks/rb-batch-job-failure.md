@@ -14,6 +14,10 @@ without corrupting downstream state. The nightly order is: `trade_import` →
 ## Prerequisites
 
 - The `job_id` and `job_name` of the failed execution.
+- The Batch Scheduler execution record for that `job_id`, including the
+  venue, business date, and linked upstream and downstream job IDs. The
+  `batch_jobs` row is intentionally unscoped and cannot establish this
+  execution scope by itself.
 - Confirmation of which downstream jobs already ran for the same business
   date.
 
@@ -72,3 +76,5 @@ operations analysts whenever morning reporting is at risk.
 
 - Tables: `batch_jobs`, `margin_runs`
 - Batch jobs: `trade_import`, `margin_run`, `reconciliation`, `invoicing`
+- External record: Batch Scheduler execution record linking the job to its
+  venue, business date, and dependency job IDs
