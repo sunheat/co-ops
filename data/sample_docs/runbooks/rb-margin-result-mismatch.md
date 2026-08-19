@@ -30,8 +30,12 @@ match the stored `margin_results` rows.
    cause of aggregate mismatches.
 4. Verify the position snapshot: late trade imports or manual adjustments
    after the margin run change `positions` without retriggering the run.
-5. Confirm the venue rate used matches the configured rate in
-   `MarginCalculator` for the venue.
+5. For a historical run, obtain the venue rate and calculation-version
+   evidence recorded by that execution, such as an execution trace or a
+   versioned configuration snapshot. Do not use the current `MarginCalculator`
+   constants as proof of the rate used by an older run. If the run-time
+   evidence or versioned rate is unavailable, stop short of confirming a
+   mismatch or triggering a rerun and escalate the evidence gap.
 
 ## Resolution Options
 
