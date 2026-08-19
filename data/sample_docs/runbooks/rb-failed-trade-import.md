@@ -17,6 +17,10 @@ import completes, so this runbook is time-critical.
 
 - Access to the reject report of the failed batch.
 - The venue file that failed, and the `batch_jobs.job_id` of the attempt.
+- The Batch Scheduler execution record for that `job_id`, including the
+  venue, business date, import batch, and linked downstream job IDs. The
+  `batch_jobs` row is intentionally unscoped and cannot identify those
+  relationships by itself.
 
 ## Investigation Steps
 
@@ -61,10 +65,13 @@ import completes, so this runbook is time-critical.
   with the reject report and keep the batch blocked until the exception is
   approved.
 - After a successful import, verify that every remaining reject has an
-  approved non-authoritative exception, then restart downstream jobs in order:
-  `margin_run`, then `reconciliation`, then `invoicing` if it was skipped or
-  blocked by the import failure. Check each downstream `batch_jobs` status
-  before restarting so an already completed invoicing run is not repeated.
+  approved non-authoritative exception. Use the Batch Scheduler execution
+  record for the same venue, business date, and import batch to identify the
+  linked downstream jobs, then restart them in order: `margin_run`, followed
+  by `reconciliation`, then `invoicing` if it was skipped or blocked by the
+  import failure. Check only those linked `batch_jobs` statuses before
+  restarting so another venue's completed invoicing run is not mistaken for
+  this batch.
 
 ## Escalation
 
@@ -75,3 +82,5 @@ analysts if the window cannot be recovered before morning reporting.
 
 - Tables: `trades`, `clients`, `batch_jobs`
 - Batch job: `trade_import`
+- External record: Batch Scheduler execution record linking the import to its
+  venue, business date, import batch, and downstream job IDs
