@@ -23,8 +23,13 @@ match the stored `margin_results` rows.
 1. Confirm the run state: `margin_runs.status` must be `COMPLETED`. A run
    still `RUNNING` or `FAILED` explains partial figures; handle via the
    batch-job-failure runbook first.
-2. Reconstruct the client margin from `positions` for the run date and venue
-   and compare with the `margin_results` row for the same run and client.
+2. Obtain the immutable execution-time `positions` snapshot used by the run
+   for the relevant date and venue from the margin execution evidence. Use
+   that snapshot to reconstruct the client margin and compare it with the
+   `margin_results` row for the same run and client; do not substitute the
+   current `positions` row after a later correction. If the execution-time
+   snapshot cannot be evidenced, stop short of confirming a historical
+   mismatch or triggering a rerun and escalate the evidence gap.
 3. Check `clients.margin_model`: a `PORTFOLIO` account receives a
    diversification offset that venues may not apply. This is a frequent root
    cause of aggregate mismatches.
