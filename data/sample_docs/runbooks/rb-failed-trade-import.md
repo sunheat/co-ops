@@ -58,11 +58,12 @@ import completes, so this runbook is time-critical.
   the corrected position, or until that position closes. Rebuild all of those
   snapshots from the corrected trade state; do not stop at the original and
   replacement trade-date rows. Invalidate the downstream `margin_results`,
-  reconciliation, risk/compliance, and invoice output derived from the old
-  trade values for every affected venue/date. Stop invoice publication and
-  apply the paid-invoice
-  payment-handling safeguards before changing or replacing any affected
-  invoice. For each affected scope with a prior completed `margin_runs` row,
+  reconciliation, and non-invoice risk/compliance output derived from the old
+  trade values for every affected venue/date. Do not invalidate or quarantine
+  any affected invoice row or rendered invoice artifact until the paid-invoice
+  payment-handling safeguards pass. Stop invoice publication and apply those
+  safeguards before changing or replacing any affected invoice. For each
+  affected scope with a prior completed `margin_runs` row,
   apply the completed-run protocol from the margin-result-mismatch runbook:
   lock the deterministic row, mark it `RUNNING`, reset `started_at` and
   `finished_at`, replace its `margin_results`, and mark it `COMPLETED` only
