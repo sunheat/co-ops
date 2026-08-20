@@ -53,7 +53,11 @@ positions. All breaks must be resolved before morning reporting.
   evidence is missing, or the baseline status cannot be evidenced, leave the
   invoice row unchanged, do not invalidate, quarantine, or cancel it, and
   escalate. Record a documented unpaid invoice at the baseline as eligible for
-  replacement.
+  replacement only provisionally. Obtain current payment evidence immediately
+  before any cancellation or reissue. Treat any payment received since the
+  baseline as paid: do not cancel or reissue until a credit, refund, or payment
+  transfer is recorded. If current payment state cannot be evidenced, leave the
+  invoice row unchanged and escalate.
   Invalidate or quarantine the affected `margin_results` and risk/compliance
   output derived from the old position. For an already `COMPLETED` margin run,
   in one transaction lock the existing `margin_runs` row, preserve its prior
@@ -64,9 +68,10 @@ positions. All breaks must be resolved before morning reporting.
   complete replacement set, and mark the run `COMPLETED` only after every
   client result is present. Then rerun reconciliation. Rerun
   invoicing only after the payment handling is documented for a baseline
-  `PAID` invoice or a baseline unpaid status is evidenced. Rerun other
-  downstream consumers after the corrected margin results, and verify that no
-  stale output remains before morning reporting.
+  `PAID` invoice or a baseline unpaid status with current evidence of no
+  intervening payment. Rerun other downstream consumers after the corrected
+  margin results, and verify that no stale output remains before morning
+  reporting.
 - If the venue aggregate is wrong, file a venue query and record the break
   as pending-venue rather than adjusting ACFS data.
 
