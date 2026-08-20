@@ -135,6 +135,47 @@ def test_chat_returns_content():
     assert response.latency_ms is not None
 
 
+def test_chat_normalizes_null_content_with_usage():
+    """A null provider content value becomes an empty string without losing usage."""
+    import httpx
+
+    def handler(request):
+        return httpx.Response(
+            200,
+            json={
+                "id": "chatcmpl-null-content",
+                "model": "reasoning-model",
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": None},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 5,
+                    "completion_tokens": 0,
+                    "total_tokens": 5,
+                },
+            },
+        )
+
+    client = LLMClient(base_url="http://testserver/v1")
+    client._client.close()
+    client._client = httpx.Client(
+        base_url="http://testserver/v1", transport=httpx.MockTransport(handler)
+    )
+    with client:
+        response = client.chat(
+            model="reasoning-model",
+            messages=[{"role": "user", "content": "hi"}],
+        )
+
+    assert response.content == ""
+    assert response.message.content == ""
+    assert response.usage.total_tokens == 5
+
+
 def _client_with_error_response(status_code: int, json_body):
     """Build an LLMClient whose transport always returns the given error."""
     import httpx
