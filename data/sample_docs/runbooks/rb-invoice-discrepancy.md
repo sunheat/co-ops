@@ -22,6 +22,11 @@ lines are not stored in it.
 - The Invoice Generator's recorded margin-call calculation evidence for a
   disputed margin-call component, including the selected margin fields and
   business-date scope. Do not infer the billing rule from `margin_results`.
+- The Invoice Generator input snapshot, or equivalent immutable execution
+  evidence, used when the invoice was generated. It must include the trade
+  inputs and margin-result values for every billed component and scope;
+  current `trades` and `margin_results` rows alone are insufficient after a
+  correction or rerun.
 - The invoice currency and the Invoice Generator's recorded FX/conversion
   evidence for any multi-venue or non-venue-currency invoice.
 
@@ -31,18 +36,21 @@ lines are not stored in it.
    component: clearing fee or margin call, amount, and period. Do not infer a
    line item from `invoices.amount`. For a margin-call component, use the
    recorded generator evidence to identify the margin fields and business-date
-   scope that were billed; if that evidence is unavailable, stop short of
-   claiming that the amount is correct and escalate the evidence gap.
+   scope that were billed; if that evidence or the immutable input snapshot is
+   unavailable, stop short of claiming that the amount is correct or changing
+   the invoice and escalate the evidence gap.
 2. Verify the invoice row and its currency. From the generator evidence,
    identify every venue and run/date scope included in the invoice, then
    enumerate the matching `margin_runs` rows for each covered venue. If the
    covered venues cannot be established, stop and escalate rather than
-   reconstructing a partial total. Group the client's `margin_results` rows
-   by their `currency`; never sum rows from different currencies before
-   conversion.
-3. For clearing fees, recompute the fee base from the client's `trades` in
-   the period grouped by venue currency, and obtain the configured fee rule
-   from the generator evidence.
+   reconstructing a partial total. Group the immutable execution-time
+   margin-result values from the input snapshot by their `currency`; do not
+   substitute current `margin_results` rows after a correction or rerun, and
+   never sum rows from different currencies before conversion.
+3. For clearing fees, recompute the fee base from the snapshot's execution-time
+   trade inputs for the client and period grouped by venue currency, and obtain
+   the configured fee rule from the generator evidence. Do not substitute
+   current `trades` rows after a correction or rerun.
    If no fee rule or line-level trace is available, stop short of claiming a
    recomputed fee and escalate the evidence gap.
 4. Apply the recorded FX/conversion evidence to each currency group. For the
