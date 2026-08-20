@@ -40,8 +40,15 @@ positions. All breaks must be resolved before morning reporting.
 
 ## Resolution Options
 
-- Correct the client position only after recording the adjustment audit. Before
-  rerunning reconciliation, stop Invoice Generator publication and the
+- Correct the client position only after recording the adjustment audit. If the
+  correction affects a historical `as_of_date`, enumerate every later
+  `positions` snapshot for the impacted client/venue/instrument through the
+  last date carrying the corrected position, or until that position closes.
+  Rebuild those snapshots in date order from the corrected trade and adjustment
+  state, and identify the affected `margin_runs`, reconciliation, risk/
+  compliance, and invoice outputs for every venue/date. Do not limit recovery
+  to the current break date. Before rerunning reconciliation, stop Invoice
+  Generator publication and the
   risk/compliance consumers. Before changing any affected invoice state,
   determine its status immediately before the dispute, or immediately before
   this correction when no client dispute exists, from the original invoice
@@ -59,14 +66,15 @@ positions. All breaks must be resolved before morning reporting.
   transfer is recorded. If current payment state cannot be evidenced, leave the
   invoice row unchanged and escalate.
   Invalidate or quarantine the affected `margin_results` and risk/compliance
-  output derived from the old position. For an already `COMPLETED` margin run,
-  in one transaction lock the existing `margin_runs` row, preserve its prior
-  completion metadata in the incident record, set `started_at` to the rerun
-  start time, clear `finished_at` to `NULL`, mark the run `RUNNING`, and delete
-  its stale `margin_results` rows. Commit that reset before executing
-  `margin_run` for the affected venue and date; let the calculation publish the
-  complete replacement set, and mark the run `COMPLETED` only after every
-  client result is present. Then rerun reconciliation. Rerun
+  output derived from the old position for every affected venue/date. For each
+  affected venue/date with an already `COMPLETED` margin run, in one transaction
+  lock the existing `margin_runs` row, preserve its prior completion metadata
+  in the incident record, set `started_at` to the rerun start time, clear
+  `finished_at` to `NULL`, mark the run `RUNNING`, and delete its stale
+  `margin_results` rows. Commit that reset before executing `margin_run` for
+  that venue/date; let the calculation publish the complete replacement set,
+  and mark the run `COMPLETED` only after every client result is present. Then
+  rerun reconciliation for every affected venue/date in date order. Rerun
   invoicing only after the payment handling is documented for a baseline
   `PAID` invoice or a baseline unpaid status with current evidence of no
   intervening payment. Rerun other downstream consumers after the corrected
