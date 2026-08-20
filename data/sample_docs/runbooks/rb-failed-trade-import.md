@@ -56,7 +56,10 @@ import completes, so this runbook is time-critical.
   impacted client/venue/instrument, enumerate every later `positions` snapshot
   from the earliest affected trade date through the last `as_of_date` carrying
   the corrected position, or until that position closes. Rebuild all of those
-  snapshots from the corrected trade state; do not stop at the original and
+  snapshots in date order from the corrected trade state and every applicable
+  manual adjustment in the operations adjustment audit record. If an
+  adjustment's audit evidence is missing, stop and escalate rather than
+  silently dropping that adjustment. Do not stop at the original and
   replacement trade-date rows. Invalidate the downstream `margin_results`,
   reconciliation, and non-invoice risk/compliance output derived from the old
   trade values for every affected venue/date. Do not invalidate or quarantine
