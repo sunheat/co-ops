@@ -16,9 +16,12 @@ Public engineering and content conventions used across this repository.
 - Type hints are expected on public functions; Pydantic models are used
   for configuration and structured LLM output.
 - Packages live under `packages/` (`llm`, `prompt`, `context`,
-  `structured_output`, `rag`, `evals`, ...). Import boundaries between
-  packages are enforced by `tests/test_import_boundaries.py`; application
-  layers must not create import cycles.
+  `structured_output`, `rag`, `evals`, ...). Fresh-process importability smoke
+  checks in `tests/test_import_boundaries.py` verify the public package entry
+  points can initialize independently; they do not perform a dependency-graph
+  audit or prove that import directions and cycles are correct. Application
+  layers must still follow the intended dependency direction and must not
+  create import cycles.
 - Public APIs prefer a unified high-level entry point (e.g. `llm.chat()`)
   returning flat response objects rather than nested provider payloads.
 - Provider-dependent code paths must degrade gracefully: when a provider
