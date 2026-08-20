@@ -116,7 +116,7 @@ The Co-Ops assistant is built to support this domain. Target capabilities:
 | `data/mock_domain/` | This domain definition | Delivered |
 | `data/sample_codebase/java/` | Mock `margin-service` Java sources | Delivered |
 | `data/sample_db/` | `schema.sql`, data dictionary, sample records | Delivered |
-| `data/sample_docs/runbooks/` | Operational runbooks | Planned |
-| `data/sample_docs/tickets/` | Support tickets and incident notes | Planned |
+| `data/sample_docs/runbooks/` | Operational runbooks | Delivered |
+| `data/sample_docs/tickets/` | Support tickets and incident notes | Delivered |
 | `data/sample_docs/` | Architecture, data-flow, FAQ docs | Planned |
 | `data/eval_seed/` | RAG evaluation question set v0 | Planned |

@@ -1,0 +1,97 @@
+# Runbook: Reconciliation Break
+
+## Purpose
+
+Triage breaks raised by the Position Reconciler, where client-level
+positions aggregated by ACFS do not match the venue-published aggregate
+positions. All breaks must be resolved before morning reporting.
+
+## When To Use
+
+- The `reconciliation` batch job raises one or more breaks for a venue and
+  business date.
+- A venue queries a position difference.
+
+## Prerequisites
+
+- The venue, business date, and instrument of the break.
+- Read access to `positions` and `trades` for the affected date.
+- Access to the operations adjustment audit record, which is maintained
+  outside the ACFS schema; `positions` and `trades` do not store adjustment
+  identifiers or audit metadata.
+
+## Investigation Steps
+
+1. Recompute the ACFS aggregate for the instrument: sum signed
+   `positions.quantity` over all clients for the venue and date.
+2. Compare the reconstruction with the venue aggregate from the venue file.
+3. Look for manual position adjustments applied after the last venue
+   submission, then check the operations adjustment audit record for the
+   matching client, instrument, and date. If the external record is missing,
+   treat it as an audit-control break and escalate before approving or
+   correcting the position.
+4. If the same instrument breaks on consecutive business dates, compare the
+   break history across those dates and correlate it with one adjustment or
+   venue submission before triaging each date independently.
+5. Check whether late or rejected trades (see the failed-trade-import
+   runbook) caused positions to lag the venue view.
+6. If a single client explains the whole difference, open a ticket against
+   the Position Reconciler with the client and instrument.
+
+## Resolution Options
+
+- Correct the client position only after recording the adjustment audit. If the
+  correction affects a historical `as_of_date`, enumerate every later
+  `positions` snapshot for the impacted client/venue/instrument through the
+  last date carrying the corrected position, or until that position closes.
+  Rebuild those snapshots in date order from the corrected trade and adjustment
+  state, and identify the affected `margin_runs`, reconciliation, risk/
+  compliance, and invoice outputs for every venue/date. Do not limit recovery
+  to the current break date. Before rerunning reconciliation, stop Invoice
+  Generator publication and the
+  risk/compliance consumers. Before changing any affected invoice state,
+  determine its status immediately before the dispute, or immediately before
+  this correction when no client dispute exists, from the original invoice
+  export or payment evidence. The current `invoices.status` may already be
+  `DISPUTED` and must not be treated as proof that the invoice was unpaid. For
+  a `PAID` invoice at that baseline, require client services to record either
+  a credit/refund for the original payment or an explicit payment transfer to
+  the replacement before any later replacement. If that payment-handling
+  evidence is missing, or the baseline status cannot be evidenced, leave the
+  invoice row unchanged, do not invalidate, quarantine, or cancel it, and
+  escalate. Record a documented unpaid invoice at the baseline as eligible for
+  replacement only provisionally. Obtain current payment evidence immediately
+  before any cancellation or reissue. Treat any payment received since the
+  baseline as paid: do not cancel or reissue until a credit, refund, or payment
+  transfer is recorded. If current payment state cannot be evidenced, leave the
+  invoice row unchanged and escalate.
+  Invalidate or quarantine the affected `margin_results` and risk/compliance
+  output derived from the old position for every affected venue/date. For each
+  affected venue/date with an already `COMPLETED` margin run, in one transaction
+  lock the existing `margin_runs` row, preserve its prior completion metadata
+  in the incident record, set `started_at` to the rerun start time, clear
+  `finished_at` to `NULL`, mark the run `RUNNING`, and delete its stale
+  `margin_results` rows. Commit that reset before executing `margin_run` for
+  that venue/date; let the calculation publish the complete replacement set,
+  and mark the run `COMPLETED` only after every client result is present. Then
+  rerun reconciliation for every affected venue/date in date order. Rerun
+  invoicing only after the payment handling is documented for a baseline
+  `PAID` invoice or a baseline unpaid status with current evidence of no
+  intervening payment. Rerun other downstream consumers after the corrected
+  margin results, and verify that no stale output remains before morning
+  reporting.
+- If the venue aggregate is wrong, file a venue query and record the break
+  as pending-venue rather than adjusting ACFS data.
+
+## Escalation
+
+Escalate to operations analysts when breaks persist after one correction
+cycle, or when a manual adjustment lacks an audit trail.
+
+## Related Artifacts
+
+- Code: `data/sample_codebase/java/margin-service/.../ReconciliationService.java`
+- Tables: `positions`, `trades`, `batch_jobs`
+- Batch job: `reconciliation`
+- External record: operations adjustment audit record (not stored in the ACFS
+  schema)
