@@ -2,11 +2,11 @@
 
 ## Scope
 
-This Day 6 spike evaluates the LiteLLM **Python SDK** against the in-repository
-`packages.llm` gateway. It does not run the LiteLLM Proxy. That distinction
-matters: the Proxy adds central authentication, virtual keys, organization
-budgets, and a dashboard, while the SDK is a dependency used directly by an
-application process.
+This comparison evaluates the LiteLLM **Python SDK** against the
+in-repository `packages.llm` gateway. It does not run the LiteLLM Proxy. That
+distinction matters: the Proxy adds central authentication, virtual keys,
+organization budgets, and a dashboard, while the SDK is a dependency used
+directly by an application process.
 
 The runnable companion is `examples/litellm_spike.py`. It makes one synchronous
 OpenAI completion through LiteLLM:
@@ -37,7 +37,7 @@ uv run --env-file .env python -m examples.litellm_spike
 | Tool calling | No typed tool schema, tool-call parser, or execution loop. Passing raw extra fields is not a supported end-to-end feature. | Supports an OpenAI-compatible response shape that includes tool calls; provider adaptation is part of LiteLLM's purpose. The application still validates arguments and executes tools. | LiteLLM removes much adapter work, not the application's tool safety and orchestration work. |
 | Error handling | Explicit typed errors, bounded retries for timeout/connection/408/409/429/5xx failures, `Retry-After` support, and raw provider error preservation. The exact retry policy is local and unit-tested. | Maps provider failures to OpenAI-compatible exception types. Its Router can add retries and fallbacks across deployments. | The gateway offers maximum policy control and observability of unusual payloads; LiteLLM offers a common error surface across more providers. |
 | Cost tracking | Parses token usage, estimates cost from a small audited local price table, and appends privacy-conscious success/failure JSONL records. Unknown models return no estimate. | SDK supports application-level cost tracking and callbacks. The Proxy adds centralized spend tracking and per-project/user budgets. | The gateway's accounting is simple and local; LiteLLM scales further when centralized tracking and budgets are needed. |
-| Maintenance cost | Small dependency surface, stable local contract, and no proxy service. New providers, streaming, tools, price updates, and edge-case adapters are this project's responsibility. | Broad provider coverage and mature features reduce feature-development work, but add package updates, provider-version changes, and potentially Proxy configuration/operations. | Prefer the gateway for an educational, tightly controlled integration; prefer LiteLLM when feature breadth outweighs the value of owning the transport layer. |
+| Maintenance cost | Small dependency surface, stable local contract, and no proxy service. New providers, streaming, tools, price updates, and edge-case adapters are this project's responsibility. | Broad provider coverage and mature features reduce feature-development work, but add package updates, provider-version changes, and potentially Proxy configuration/operations. | Prefer the gateway for a tightly controlled integration; prefer LiteLLM when feature breadth outweighs the value of owning the transport layer. |
 
 ## Evidence and limits
 
@@ -56,9 +56,9 @@ a general SDK comparison.
 ## Recommendation
 
 Do not replace `packages.llm` solely to shorten a single OpenAI-compatible
-call: both interfaces keep that call small, and the local implementation has
-valuable learning and policy-control benefits. Introduce LiteLLM behind the
-existing `llm.chat()` facade if a future task needs native non-compatible
-providers, streaming, tool calling, cross-provider fallback, or centralized
-cost governance. That preserves the current caller contract while allowing a
+call: both interfaces keep that call small, and the local implementation
+provides explicit policy control. Introduce LiteLLM behind the existing
+`llm.chat()` facade if a future task needs native non-compatible providers,
+streaming, tool calling, cross-provider fallback, or centralized cost
+governance. That preserves the current caller contract while allowing a
 measured migration.

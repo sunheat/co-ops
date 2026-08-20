@@ -5,9 +5,10 @@ questions every gateway design has to face.
 
 ## Why build an LLM gateway at all?
 
-Every later phase of this project (RAG, agents, evals) calls models. Doing that
-without a gateway means each caller re-implements endpoint quirks, auth, error
-mapping, timeouts, retries, and usage accounting — and does so inconsistently.
+Every downstream capability in this project (RAG, agents, and evaluation)
+calls models. Doing that without a gateway means each caller re-implements
+endpoint quirks, auth, error mapping, timeouts, retries, and usage accounting —
+and does so inconsistently.
 The gateway is the single place where those cross-cutting concerns live, so:
 
 - callers write `llm.chat(messages, provider=..., model=...)` and nothing else;
@@ -23,15 +24,15 @@ The gateway is the single place where those cross-cutting concerns live, so:
    conflicting dependency pins).
 2. **The SDK hides exactly what this project needs to observe.** Provider
    compatibility differences (error body shapes, missing fields, header
-   behavior) are a first-class study subject here; `APIError.raw_body` keeps
-   each provider's response byte-for-byte for observation, which SDKs
+   behavior) are a first-class compatibility concern here; `APIError.raw_body`
+   keeps each provider's response byte-for-byte for diagnostics, which SDKs
    normalize away.
 3. **Control over the reliability policy.** Retry classification, backoff
    caps, `Retry-After` parsing, and failure logging are project-specific
    decisions; owning the HTTP layer makes them explicit and testable with
    `httpx.MockTransport` — no network, no mocks of a vendor SDK's internals.
-4. **Learning value.** The point of Phase 1 is understanding what an LLM call
-   actually is: an HTTP POST with well-known failure modes.
+4. **Protocol transparency.** The HTTP layer makes the request contract and
+   its well-known failure modes explicit and testable.
 
 ## What is the boundary with LiteLLM?
 
@@ -44,13 +45,13 @@ LiteLLM replacement:
 | Providers | OpenAI-compatible endpoints only | 100+ providers, protocol translation |
 | Scope | One process, in-repo library | Standalone proxy server, key management, budgets |
 | Naming | `provider/model` (same convention) | `provider/model` |
-| Goal | Learning + minimal, auditable code the project fully controls | Production feature coverage |
+| Goal | Minimal, auditable code with a controlled scope | Production feature coverage |
 
-The rule of thumb: features are added here only when this project needs them
-and understanding them is part of the learning goal. If the project ever needs
-non-OpenAI-compatible providers, enterprise key management, or org-level
-budgets, the right move is to put LiteLLM (or a similar proxy) behind the same
-`llm.chat()` facade rather than rebuild it.
+The rule of thumb: features are added here only when they fit the project's
+scope and acceptance criteria. If the project ever needs non-OpenAI-compatible
+providers, enterprise key management, or org-level budgets, the right move is
+to put LiteLLM (or a similar proxy) behind the same `llm.chat()` facade rather
+than rebuild it.
 
 ## The OpenAI-compatible API in a nutshell
 

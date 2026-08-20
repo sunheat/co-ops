@@ -1,12 +1,13 @@
 # Co-Ops
 
-A production-style enterprise GenAI learning project covering an
+A production-style enterprise GenAI reference project covering an
 OpenAI-compatible LLM gateway, prompt and context engineering, structured
 output, evaluation, observability, and cost-aware model routing.
 
-## Week 2 module boundaries
+## Module boundaries
 
-Week 2 keeps transport concerns separate from application-layer decisions:
+The package layout keeps transport concerns separate from application-layer
+decisions:
 
 ```text
 packages/
@@ -20,8 +21,8 @@ packages/
 The application packages depend on the stable data contracts in `packages.llm`
 but do not own provider configuration or HTTP behavior. The compatibility
 modules `packages.llm.prompt`, `packages.llm.structured_output`, and
-`packages.rag.context` remain as import shims for earlier Week 2 examples.
-New code should use the four explicit package boundaries above.
+`packages.rag.context` remain as import shims for earlier examples. New code
+should use the four explicit package boundaries above.
 
 ## Quick start
 
@@ -44,7 +45,7 @@ cache instead:
 uv --cache-dir .local\uv-cache run pytest -q -p no:cacheprovider
 ```
 
-Run the offline Week 2 examples from the repository root:
+Run the offline examples from the repository root:
 
 ```bash
 uv run python -m examples.prompt_building
@@ -73,7 +74,8 @@ generated live artifacts.
   `system`/`user` messages. A developer instruction is folded into `system`
   so the role contract remains `system | user | assistant`.
 - `packages.context` builds the four Context Engineering layers:
-  system, retrieved evidence, memory, and task. Retrieval is mocked in Week 2.
+  system, retrieved evidence, memory, and task. Retrieval is mocked in the
+  current implementation.
 - `packages.structured_output` generates a JSON Schema instruction, parses the
   response, validates it with Pydantic, and sends one correction request when
   JSON parsing or schema validation fails.
@@ -85,17 +87,17 @@ generated live artifacts.
 
 ## LiteLLM boundary
 
-The local gateway is intentionally a small learning and application-specific
-abstraction. It owns the contract this repository needs: provider settings,
-the OpenAI-compatible request/response shape, typed errors, retry policy,
-usage records, and the `llm.chat()` call surface.
+The local gateway is intentionally a small application-specific abstraction.
+It owns the contract this repository needs: provider settings, the
+OpenAI-compatible request/response shape, typed errors, retry policy, usage
+records, and the `llm.chat()` call surface.
 
 LiteLLM becomes attractive when the project needs native APIs from many
 providers, streaming, tool-call adaptation, cross-provider fallbacks, or
 centralized spend governance. Those capabilities are expensive to maintain in
-the local gateway and are not the learning target of this repository. A future
-migration can put LiteLLM behind the existing gateway facade or router instead
-of changing every application call site.
+the local gateway and are outside its current scope. A future migration can
+put LiteLLM behind the existing gateway facade or router instead of changing
+every application call site.
 
 The following logic stays in the application layer even after such a
 migration:
@@ -107,8 +109,8 @@ migration:
 - domain-specific tool orchestration, citation/grounding checks, benchmark
   rubrics, and acceptance criteria.
 
-For a summary of what has been built so far, read
-[the project progress notes](docs/project-progress.md).
+For the current implementation status, read
+[the project status](docs/project-progress.md).
 
 ## Reliability and usage logs
 
