@@ -94,11 +94,15 @@ lines are not stored in it.
   the status recorded before the dispute only after the corrected breakdown is
   available. If the prior status is not evidenced, leave the row `DISPUTED`
   and escalate.
-- If the aggregate amount and every component line are correct, reply to the
-  client with the available trace from the invoice export or total to runs and
-  trades, and restore the status recorded before the dispute (for example,
-  `PAID` in TKT-2024-007), rather than hard-coding `ISSUED`. If the prior
-  status is not evidenced, leave the row `DISPUTED` and escalate.
+- If the aggregate amount and every component line are correct, obtain current
+  payment evidence before closing the dispute. If payment was received after
+  the dispute opened, retain the invoice as `PAID` rather than restoring an
+  earlier `ISSUED` status. If current payment state cannot be evidenced, leave
+  the row `DISPUTED` and escalate. Otherwise, reply to the client with the
+  available trace from the invoice export or total to runs and trades, and
+  restore the status recorded before the dispute (for example, `PAID` in
+  TKT-2024-007), rather than hard-coding `ISSUED`. If the prior status is not
+  evidenced, leave the row `DISPUTED` and escalate.
 
 ## Escalation
 
