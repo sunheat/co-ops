@@ -30,8 +30,10 @@ repeat. Newest entries first.
   layer and keeping re-exports one-directional
   (see commits `fix: break application import cycles`, `fix: preserve llm
   package exports`).
-- **Prevention**: `tests/test_import_boundaries.py` now enforces allowed
-  import directions between packages.
+- **Prevention**: `tests/test_import_boundaries.py` provides fresh-process
+  importability smoke checks for public package entry points; it does not
+  inspect dependency directions or cycles, so those remain a review
+  responsibility.
 
 ### [Provider compatibility] Newly issued Gemini key rejected for gemini-2.5-flash
 
