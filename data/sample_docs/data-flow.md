@@ -6,7 +6,7 @@ to. Table and column names refer to the schema in `data/sample_db/`.
 
 ## Nightly Batch Window
 
-The Batch Scheduler orchestrates four recorded steps in fixed order. The
+The Batch Scheduler orchestrates five recorded steps in fixed order. The
 nightly position-maintenance operation runs between trade import and margin
 run, materializing the positions that downstream calculations consume. Each
 recorded step is represented by a row in `batch_jobs`.
@@ -18,22 +18,22 @@ venue trade files
 [1] trade_import --writes--> trades
       |
       v
-[position_maintenance] <---- prior positions
+[2] position_maintenance <---- prior positions
       | writes
       v
 positions
       |
       v
-[2] margin_run --writes--> margin_runs + margin_results
+[3] margin_run --writes--> margin_runs + margin_results
       |
       v
-[3] reconciliation <------- venue aggregate files
+[4] reconciliation <------- venue aggregate files
       | writes
       v
 break report
       |
       v
-[4] invoicing (monthly) --writes--> invoices
+[5] invoicing (monthly) --writes--> invoices
 ```
 
 ### Step 1: Trade Import (`trade_import`)
@@ -46,7 +46,7 @@ break report
   format violations) go to a reject report and block all downstream steps.
   See `runbooks/rb-failed-trade-import.md`.
 
-### Position Maintenance
+### Step 2: Position Maintenance
 
 - **Input**: accepted `trades` for the business date and the prior position
   snapshot.
@@ -58,7 +58,7 @@ break report
   `previous_close`, makes the margin result unreliable and must be corrected
   before the margin run. See `data/sample_docs/tickets/TKT-2024-009.md`.
 
-### Step 2: Margin Run (`margin_run`)
+### Step 3: Margin Run (`margin_run`)
 
 - **Input**: `clients` (active accounts only), `positions` for the business
   date and venue.
@@ -73,7 +73,7 @@ break report
   positions and venue aggregates, not `margin_results`. See
   `runbooks/rb-batch-job-failure.md`.
 
-### Step 3: Reconciliation (`reconciliation`)
+### Step 4: Reconciliation (`reconciliation`)
 
 - **Input**: `positions` for the venue and date, plus the venue-published
   aggregate positions from the venue file (consumed in-memory, not
@@ -83,7 +83,7 @@ break report
 - **Output**: a break per mismatched instrument; breaks must be triaged
   before morning reporting. See `runbooks/rb-reconciliation-break.md`.
 
-### Step 4: Invoicing (monthly)
+### Step 5: Invoicing (monthly)
 
 - **Input**: the month's `margin_results` and `trades`.
 - **Output**: `invoices` rows per client and period, either clearing-fee or
