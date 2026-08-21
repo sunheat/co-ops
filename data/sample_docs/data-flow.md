@@ -125,12 +125,17 @@ ticket / dispute
       v
 margin_results or invoices row
       |
-      v
-margin_runs + positions snapshot for the run date
+      +-- clearing-fee component --------> trades and originating import batch
       |
-      v
-trades and the originating import batch
+      `-- margin-call component ---------> margin_runs + positions snapshot
+                                           |
+                                           v
+                                         trades and originating import batch
 ```
+
+Clearing-fee components use immutable trade inputs directly. Margin-call
+components also trace through the recorded margin run and positions snapshot
+before following the related trade and import-batch lineage.
 
 Runbooks in `runbooks/` codify this trace per failure class; tickets in
 `tickets/` record concrete investigations, and `tickets/incidents/` record
