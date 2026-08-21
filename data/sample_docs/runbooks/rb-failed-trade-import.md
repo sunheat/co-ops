@@ -3,8 +3,8 @@
 ## Purpose
 
 Recover the nightly window when the Trade Importer rejects a venue file.
-Downstream jobs (margin run, reconciliation, invoicing) are blocked until the
-import completes, so this runbook is time-critical.
+Downstream jobs (position maintenance, margin run, reconciliation, invoicing)
+are blocked until the import completes, so this runbook is time-critical.
 
 ## When To Use
 
@@ -72,8 +72,10 @@ import completes, so this runbook is time-critical.
   `finished_at`, replace its `margin_results`, and mark it `COMPLETED` only
   after every client result is present. If downstream jobs were blocked by
   this import failure and no prior completed run exists, do not lock a missing
-  row; after the import succeeds, start the linked `margin_run` through the
-  normal scheduler path, then run `reconciliation` and `invoicing` in order.
+  row; after the import succeeds, run the linked `position_maintenance`
+  through the normal scheduler path, verify the rebuilt positions snapshot,
+  then start the linked `margin_run` and run `reconciliation` and `invoicing`
+  in order.
   Apply this decision to every affected venue/date, including later
   carry-forward snapshots, not only the current import batch.
 - Quarantine a row without reprocessing only when the venue confirms that it
@@ -83,11 +85,11 @@ import completes, so this runbook is time-critical.
 - After a successful import, verify that every remaining reject has an
   approved non-authoritative exception. Use the Batch Scheduler execution
   record for the same venue, business date, and import batch to identify the
-  linked downstream jobs, then restart them in order: `margin_run`, followed
-  by `reconciliation`, then `invoicing` if it was skipped or blocked by the
-  import failure. Check only those linked `batch_jobs` statuses before
-  restarting so another venue's completed invoicing run is not mistaken for
-  this batch.
+  linked downstream jobs, then restart them in order: `position_maintenance`,
+  followed by `margin_run`, `reconciliation`, then `invoicing` if it was
+  skipped or blocked by the import failure. Check only those linked
+  `batch_jobs` statuses before restarting so another venue's completed
+  invoicing run is not mistaken for this batch.
 
 ## Escalation
 
@@ -97,6 +99,7 @@ analysts if the window cannot be recovered before morning reporting.
 ## Related Artifacts
 
 - Tables: `trades`, `clients`, `batch_jobs`
-- Batch job: `trade_import`
+- Batch jobs: `trade_import`, `position_maintenance`, `margin_run`,
+  `reconciliation`, `invoicing`
 - External record: Batch Scheduler execution record linking the import to its
   venue, business date, import batch, and downstream job IDs

@@ -21,10 +21,11 @@ venues:
 - invoice generation for clearing fees and margin calls;
 - fulfillment of settlement instructions to custodians and venues.
 
-ACFS runs as a mix of a Java service layer (margin and reconciliation),
-Python batch jobs (import, export, reporting), a relational database, and
-a nightly batch schedule. A small operations team supports it around the
-clock because a failed margin run can block morning reporting to venues.
+ACFS runs as a mix of a Java service layer (margin, reconciliation, and
+trade reporting), Python batch jobs (import, export, reporting), a
+relational database, and a nightly batch schedule. A small operations team
+supports it around the clock because a failed margin run can block morning
+reporting to venues.
 
 ## Core Modules
 
@@ -32,10 +33,11 @@ clock because a failed margin run can block morning reporting to venues.
 | --- | --- | --- |
 | Margin Service | Java | Calculates initial and variation margin per client account from positions, applies venue-specific rates, and writes `margin_results`. |
 | Trade Importer | Python batch | Parses nightly venue trade files, validates them, and loads records into `trades`. Rejects are written to a reject report. |
+| Trade Reporting Converter | Java | Receives broker trade messages (FIX), enriches and maps them against broker and instrument master data, and converts them into TRC009 XML messages (eBIZ framework, "Reaction to Service Results" transaction) for the risk monitoring system. |
 | Position Reconciler | Java | Aggregates client-level positions and compares them with venue aggregate positions; raises breaks on any mismatch. |
 | Invoice Generator | Python batch | Builds monthly clearing-fee and margin-call invoices from `margin_results` and `trades`, writes `invoices`. |
 | Fulfillment Adapter | Java | Converts approved settlement instructions into venue/custodian message formats and tracks acknowledgment status. |
-| Batch Scheduler | Python | Orchestrates the nightly window: import → margin run → reconciliation → invoicing; records every run in `batch_jobs`. |
+| Batch Scheduler | Python | Orchestrates the nightly window: import → position maintenance → margin run → reconciliation → invoicing; records scheduled jobs in `batch_jobs`. |
 | Support Runbook | Docs | Operational procedures for known failure classes, owned by the support team. |
 
 ## Primary Users
@@ -118,5 +120,5 @@ The Co-Ops assistant is built to support this domain. Target capabilities:
 | `data/sample_db/` | `schema.sql`, data dictionary, sample records | Delivered |
 | `data/sample_docs/runbooks/` | Operational runbooks | Delivered |
 | `data/sample_docs/tickets/` | Support tickets and incident notes | Delivered |
-| `data/sample_docs/` | Architecture, data-flow, FAQ docs | Planned |
-| `data/eval_seed/` | RAG evaluation question set v0 | Planned |
+| `data/sample_docs/` | Architecture, data-flow, FAQ docs | Delivered |
+| `data/eval_seed/` | RAG evaluation question set v0 | Delivered |

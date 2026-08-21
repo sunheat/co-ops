@@ -354,9 +354,10 @@ class LLMClient:
         choices = []
         for choice_data in data.get("choices", []):
             message_data = choice_data.get("message", {})
+            content = message_data.get("content")
             message = ChatMessage(
                 role=message_data.get("role", "assistant"),
-                content=message_data.get("content", ""),
+                content=content if content is not None else "",
             )
             choices.append(
                 ChatChoice(

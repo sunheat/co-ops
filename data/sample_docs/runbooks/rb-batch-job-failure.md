@@ -4,7 +4,7 @@
 
 Safely recover the nightly batch window after a job fails or overruns,
 without corrupting downstream state. The nightly order is: `trade_import` →
-`margin_run` → `reconciliation` → invoicing.
+`position_maintenance` → `margin_run` → `reconciliation` → invoicing.
 
 ## When To Use
 
@@ -54,6 +54,15 @@ without corrupting downstream state. The nightly order is: `trade_import` →
   trades and reprocess only rejects that were resolved, or an explicitly
   approved non-authoritative exception. Replaying accepted rows can collide
   with the `trades.trade_id` primary key.
+- For a failed `position_maintenance`, keep accepted `trades` and correct the
+  missing position input first, such as seeding `previous_close` for a new
+  listing. If the attempt wrote partial position rows, replace them
+  transactionally before writing the retry. Mark the scoped Scheduler
+  execution `FAILED`; if no `batch_jobs` row was recorded, record the failed
+  execution before retrying rather than inferring success from its absence.
+  Reset and rerun `position_maintenance` through the normal Scheduler path
+  for the same venue and business date, then verify the complete `positions`
+  snapshot before starting `margin_run`.
 - For a failed `margin_run`, preserve the failed execution metadata in the
   incident record. If the deterministic `margin_runs` row exists, in one
   transaction lock it, replace any partial `margin_results` rows, set
@@ -85,6 +94,7 @@ operations analysts whenever morning reporting is at risk.
 ## Related Artifacts
 
 - Tables: `batch_jobs`, `margin_runs`
-- Batch jobs: `trade_import`, `margin_run`, `reconciliation`, `invoicing`
+- Batch jobs: `trade_import`, `position_maintenance`, `margin_run`,
+  `reconciliation`, `invoicing`
 - External record: Batch Scheduler execution record linking the job to its
   venue, business date, and dependency job IDs
