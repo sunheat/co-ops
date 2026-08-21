@@ -1,7 +1,8 @@
 """Example usage of the universal LLM client."""
 
 import os
-from packages.llm import LLMClient, ChatMessage
+
+from packages.llm import ChatMessage, LLMClient
 
 
 def main():
@@ -35,7 +36,10 @@ def main():
     json_response = client.chat(
         model="gpt-4o-mini",
         messages=[
-            ChatMessage(role="user", content="Return a JSON object with 'name' and 'age' fields."),
+            ChatMessage(
+                role="user",
+                content="Return a JSON object with 'name' and 'age' fields.",
+            ),
         ],
         response_format="json",
     )

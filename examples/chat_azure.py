@@ -31,7 +31,10 @@ def main():
     response = llm.chat(
         messages=[
             {"role": "system", "content": "You are a helpful assistant."},
-            {"role": "user", "content": "In one sentence: what is an Azure OpenAI deployment?"},
+            {
+                "role": "user",
+                "content": "In one sentence: what is an Azure OpenAI deployment?",
+            },
         ],
         provider="azure",
         model=deployment,

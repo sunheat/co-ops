@@ -175,7 +175,9 @@ def test_format_metric_rejects_top_level_valid_but_typed_schema_invalid_answer()
 
 @pytest.mark.parametrize("case", CASES, ids=lambda case: case.case_id)
 def test_missing_extra_and_insufficient_answer_branches(case):
-    field_name = next(name for name in case.answer_model.model_fields if name != "status")
+    field_name = next(
+        name for name in case.answer_model.model_fields if name != "status"
+    )
     missing = dict(case.expected_answer)
     del missing[field_name]
     extra = {**case.expected_answer, "explanation": "not allowed"}
@@ -190,7 +192,9 @@ def test_missing_extra_and_insufficient_answer_branches(case):
 
 
 @pytest.mark.parametrize("value", ["NaN", "sNaN", "Infinity", "-Infinity", "1e3"])
-@pytest.mark.parametrize("case_index,field_name", [(2, "additional_spend_usd"), (9, "shipping_charge_usd")])
+@pytest.mark.parametrize(
+    "case_index,field_name", [(2, "additional_spend_usd"), (9, "shipping_charge_usd")]
+)
 def test_decimal_contract_rejects_nonfinite_and_noncanonical_values(
     case_index, field_name, value
 ):
@@ -595,7 +599,9 @@ def test_all_prompt_styles_have_identical_contract_and_evidence():
                 assert evidence.source in content
                 assert evidence.content in content
             assert '{"status":"insufficient_evidence"}' in content
-            assert "JSON booleans must be true or false, never quoted strings" in content
+            assert (
+                "JSON booleans must be true or false, never quoted strings" in content
+            )
             assert "containing every provided source ID" in content
 
         schema_payload = case.answer_model.model_json_schema()
@@ -620,9 +626,9 @@ def test_request_order_is_reproducible_balanced_and_seeded():
     assert [item["request_id"] for item in first] != [
         item["request_id"] for item in third
     ]
-    assert {
-        item["request_id"]: item["request_hash"] for item in first
-    } == {item["request_id"]: item["request_hash"] for item in third}
+    assert {item["request_id"]: item["request_hash"] for item in first} == {
+        item["request_id"]: item["request_hash"] for item in third
+    }
 
     positions = {style: [] for style in PROMPT_STYLES}
     for index in range(0, len(first), len(PROMPT_STYLES)):
@@ -732,7 +738,9 @@ def build_artifact(
         )
         results.append(result)
     _write_jsonl(directory / "results.jsonl", (asdict(result) for result in results))
-    final_status = status or ("complete" if len(results) == len(requests) else "partial")
+    final_status = status or (
+        "complete" if len(results) == len(requests) else "partial"
+    )
     completed_at = "2026-08-09T00:05:00+00:00"
     summary = render_summary(
         results,
@@ -827,9 +835,7 @@ def test_source_prompt_hash_is_verified(tmp_path):
     (directory / "prompts.md").write_text("tampered", encoding="utf-8")
 
     with pytest.raises(ValueError, match="prompt file hash"):
-        _regrade_artifact(
-            directory / "results.jsonl", tmp_path, allow_partial=False
-        )
+        _regrade_artifact(directory / "results.jsonl", tmp_path, allow_partial=False)
 
 
 def test_source_prompt_must_be_derived_from_verified_requests(tmp_path):
@@ -845,9 +851,7 @@ def test_source_prompt_must_be_derived_from_verified_requests(tmp_path):
     )
 
     with pytest.raises(ValueError, match="verified requests"):
-        _regrade_artifact(
-            directory / "results.jsonl", tmp_path, allow_partial=False
-        )
+        _regrade_artifact(directory / "results.jsonl", tmp_path, allow_partial=False)
 
 
 def test_source_manifest_and_summary_must_be_canonical_derivations(tmp_path):
@@ -856,9 +860,7 @@ def test_source_manifest_and_summary_must_be_canonical_derivations(tmp_path):
     payload = benchmark._read_json(manifest_path)
     manifest_path.write_text(json.dumps(payload), encoding="utf-8")
     with pytest.raises(ValueError, match="manifest is not canonical"):
-        _regrade_artifact(
-            directory / "results.jsonl", tmp_path, allow_partial=False
-        )
+        _regrade_artifact(directory / "results.jsonl", tmp_path, allow_partial=False)
 
     directory, _, _, _ = build_artifact(tmp_path)
     summary_path = directory / "summary.md"
@@ -869,9 +871,7 @@ def test_source_manifest_and_summary_must_be_canonical_derivations(tmp_path):
     manifest = replace(manifest, summary_file_sha256=_sha256_file(summary_path))
     _write_manifest(directory / "manifest.json", manifest)
     with pytest.raises(ValueError, match="not derived"):
-        _regrade_artifact(
-            directory / "results.jsonl", tmp_path, allow_partial=False
-        )
+        _regrade_artifact(directory / "results.jsonl", tmp_path, allow_partial=False)
 
 
 def test_regrade_rejects_a_noncanonical_result_filename(tmp_path):
@@ -900,7 +900,14 @@ def test_regrade_rejects_case_changed_result_filename(tmp_path):
     changed_case.write_bytes((directory / "results.jsonl").read_bytes())
 
     with pytest.raises(SystemExit) as error:
-        main(["--regrade-results", str(changed_case), "--output-dir", str(tmp_path / "out")])
+        main(
+            [
+                "--regrade-results",
+                str(changed_case),
+                "--output-dir",
+                str(tmp_path / "out"),
+            ]
+        )
 
     assert error.value.code == 2
 
@@ -920,9 +927,7 @@ def test_regrade_uses_manifest_repeats_and_preserves_partial_status(tmp_path):
         status="partial",
     )
 
-    output = _regrade_artifact(
-        source / "results.jsonl", tmp_path, allow_partial=True
-    )
+    output = _regrade_artifact(source / "results.jsonl", tmp_path, allow_partial=True)
     output_manifest = benchmark._manifest_from_dict(
         benchmark._read_json(output / "manifest.json")
     )
@@ -1388,7 +1393,9 @@ class FakeRouter:
 
 
 def test_live_run_flushes_results_and_completes(monkeypatch, tmp_path):
-    monkeypatch.setattr(benchmark, "load_settings", lambda: SimpleNamespace(max_retries=0))
+    monkeypatch.setattr(
+        benchmark, "load_settings", lambda: SimpleNamespace(max_retries=0)
+    )
     monkeypatch.setattr(benchmark, "ModelRouter", FakeRouter)
     FakeRouter.responses_before_interrupt = None
 
@@ -1404,7 +1411,9 @@ def test_live_run_flushes_results_and_completes(monkeypatch, tmp_path):
 
 
 def test_live_interrupt_preserves_rows_and_marks_partial(monkeypatch, tmp_path):
-    monkeypatch.setattr(benchmark, "load_settings", lambda: SimpleNamespace(max_retries=0))
+    monkeypatch.setattr(
+        benchmark, "load_settings", lambda: SimpleNamespace(max_retries=0)
+    )
     monkeypatch.setattr(benchmark, "ModelRouter", FakeRouter)
     FakeRouter.responses_before_interrupt = 2
 
@@ -1493,7 +1502,9 @@ def test_summary_failure_marks_completed_calls_partial(monkeypatch, tmp_path):
 
 
 def test_append_failure_does_not_increment_persisted_count(monkeypatch, tmp_path):
-    monkeypatch.setattr(benchmark, "load_settings", lambda: SimpleNamespace(max_retries=0))
+    monkeypatch.setattr(
+        benchmark, "load_settings", lambda: SimpleNamespace(max_retries=0)
+    )
     monkeypatch.setattr(benchmark, "ModelRouter", FakeRouter)
     FakeRouter.responses_before_interrupt = None
 
@@ -1644,9 +1655,7 @@ def test_committed_live_fixture_is_complete_and_exactly_regradable(tmp_path):
     ):
         assert all(
             record["response_id"] is None
-            for record in benchmark._read_jsonl(
-                result_path, require_canonical=True
-            )
+            for record in benchmark._read_jsonl(result_path, require_canonical=True)
         )
     fixture_text = "\n".join(
         path.read_text(encoding="utf-8", errors="strict")

@@ -48,5 +48,7 @@ def get_provider(name: str) -> Provider:
     key = name.lower()
     if key not in PROVIDERS:
         known = ", ".join(sorted(PROVIDERS))
-        raise UnknownProviderError(f"Unknown provider '{name}'. Known providers: {known}")
+        raise UnknownProviderError(
+            f"Unknown provider '{name}'. Known providers: {known}"
+        )
     return PROVIDERS[key]

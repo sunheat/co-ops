@@ -293,9 +293,7 @@ CASES: tuple[BenchmarkCase, ...] = (
                 "import completed at 02:18 UTC.",
             ),
         ),
-        required_sources=frozenset(
-            {"operations_runbook.md", "incident_1842.md"}
-        ),
+        required_sources=frozenset({"operations_runbook.md", "incident_1842.md"}),
         answer_model=DelayedImportAnswer,
         expected_answer={
             "status": "answered",
@@ -320,9 +318,7 @@ CASES: tuple[BenchmarkCase, ...] = (
                 "and has no passing result.",
             ),
         ),
-        required_sources=frozenset(
-            {"release_policy.md", "release_3.4.1.md"}
-        ),
+        required_sources=frozenset({"release_policy.md", "release_3.4.1.md"}),
         answer_model=ReleaseGateAnswer,
         expected_answer={
             "status": "answered",
@@ -386,9 +382,7 @@ CASES: tuple[BenchmarkCase, ...] = (
                 "other document.",
             ),
         ),
-        required_sources=frozenset(
-            {"identity_policy.md", "verification_request.md"}
-        ),
+        required_sources=frozenset({"identity_policy.md", "verification_request.md"}),
         answer_model=IdentityPolicyAnswer,
         expected_answer={
             "status": "answered",
@@ -430,9 +424,7 @@ CASES: tuple[BenchmarkCase, ...] = (
                 "The production value of ENABLE_NEW_BILLING is false.",
             ),
         ),
-        required_sources=frozenset(
-            {"billing_config.md", "production_environment.md"}
-        ),
+        required_sources=frozenset({"billing_config.md", "production_environment.md"}),
         answer_model=FeatureFlagAnswer,
         expected_answer={
             "status": "answered",
@@ -454,9 +446,7 @@ CASES: tuple[BenchmarkCase, ...] = (
                 "login_audit.md", "The fifth failed attempt occurred at 10:05 UTC."
             ),
         ),
-        required_sources=frozenset(
-            {"authentication_policy.md", "login_audit.md"}
-        ),
+        required_sources=frozenset({"authentication_policy.md", "login_audit.md"}),
         answer_model=AccountLockAnswer,
         expected_answer={"status": "answered", "unlock_at": "10:35:00Z"},
     ),
@@ -734,7 +724,10 @@ class RunManifestPayload(StrictArtifactModel):
         if self.kind != "regrade":
             terminal_times.append(self.report_generated_at)
         for terminal_time in terminal_times:
-            if terminal_time is not None and _parse_rfc3339(terminal_time) < parsed_started:
+            if (
+                terminal_time is not None
+                and _parse_rfc3339(terminal_time) < parsed_started
+            ):
                 raise ValueError("manifest terminal time precedes start time")
         if self.active_request_id is not None:
             valid_request_ids = {
@@ -784,13 +777,16 @@ class BenchmarkResultPayload(StrictArtifactModel):
         if isinstance(self.repeat, bool) or self.repeat < 1:
             raise ValueError("result repeat is invalid")
         usage = (self.prompt_tokens, self.completion_tokens, self.total_tokens)
-        if not (all(value is None for value in usage) or all(
-            isinstance(value, int)
-            and not isinstance(value, bool)
-            and value >= 0
-            and value <= MAX_REPORTED_TOKENS
-            for value in usage
-        )):
+        if not (
+            all(value is None for value in usage)
+            or all(
+                isinstance(value, int)
+                and not isinstance(value, bool)
+                and value >= 0
+                and value <= MAX_REPORTED_TOKENS
+                for value in usage
+            )
+        ):
             raise ValueError("usage must be a complete non-negative triple")
         if usage[0] is not None and usage[2] < usage[0] + usage[1]:
             raise ValueError("total tokens cannot be below reported token components")
@@ -821,18 +817,20 @@ class BenchmarkResultPayload(StrictArtifactModel):
         if self.status == "provider_error" and not self.error:
             raise ValueError("provider errors require an error message")
         normalized_finish = _normalize_finish_reason(self.finish_reason)
-        if self.status == "ok" and normalized_finish not in (
-            NORMAL_FINISH_REASONS
-        ):
+        if self.status == "ok" and normalized_finish not in (NORMAL_FINISH_REASONS):
             raise ValueError("ok result has a non-success finish reason")
         if (
             self.status == "truncated"
             and normalized_finish not in TRUNCATED_FINISH_REASONS
         ):
             raise ValueError("truncated result lacks a token-limit finish reason")
-        if self.status == "provider_error" and self.response and (
-            normalized_finish in NORMAL_FINISH_REASONS
-            and self.error != "InvalidResponse: missing response choices"
+        if (
+            self.status == "provider_error"
+            and self.response
+            and (
+                normalized_finish in NORMAL_FINISH_REASONS
+                and self.error != "InvalidResponse: missing response choices"
+            )
         ):
             raise ValueError("provider error response has inconsistent provenance")
         if self.status != "ok":
@@ -857,9 +855,7 @@ class BenchmarkResultPayload(StrictArtifactModel):
 
 
 def _render_evidence(case: BenchmarkCase) -> str:
-    return "\n\n".join(
-        f"[{item.source}]\n{item.content}" for item in case.evidence
-    )
+    return "\n\n".join(f"[{item.source}]\n{item.content}" for item in case.evidence)
 
 
 def _output_instruction(case: BenchmarkCase) -> str:
@@ -1058,11 +1054,7 @@ def _finite_optional_cost(value: Any) -> float | None:
 
 def _finite_optional_latency(value: Any) -> float | None:
     result = _finite_optional_float(value)
-    return (
-        result
-        if result is not None and result <= MAX_REPORTED_LATENCY_MS
-        else None
-    )
+    return result if result is not None and result <= MAX_REPORTED_LATENCY_MS else None
 
 
 def _finish_reason(response: Any) -> str | None:
@@ -1170,14 +1162,11 @@ def _result_from_response(
     choices = getattr(response, "choices", None)
     no_choices = hasattr(response, "choices") and not choices
     unknown_finish = bool(normalized_finish) and normalized_finish not in (
-        TRUNCATED_FINISH_REASONS
-        | NON_GRADABLE_FINISH_REASONS
-        | NORMAL_FINISH_REASONS
+        TRUNCATED_FINISH_REASONS | NON_GRADABLE_FINISH_REASONS | NORMAL_FINISH_REASONS
     )
     if (
         not normalized_finish
-        or
-        normalized_finish in NON_GRADABLE_FINISH_REASONS
+        or normalized_finish in NON_GRADABLE_FINISH_REASONS
         or unknown_finish
         or no_choices
     ):
@@ -1212,9 +1201,9 @@ def _result_from_response(
     string_citations = [
         source for source in parsed.citations if isinstance(source, str)
     ]
-    citations_valid = parsed.citation_syntax_valid and set(
-        string_citations
-    ).issubset(allowed_sources)
+    citations_valid = parsed.citation_syntax_valid and set(string_citations).issubset(
+        allowed_sources
+    )
     evidence_cited = citations_valid and case.required_sources.issubset(
         string_citations
     )
@@ -1325,9 +1314,9 @@ def _load_persisted_results(path: Path) -> list[BenchmarkResult]:
     records = _read_jsonl(path, require_canonical=True)
     return [
         BenchmarkResult(
-            **BenchmarkResultPayload.model_validate(
-                record, strict=True
-            ).model_dump(mode="python")
+            **BenchmarkResultPayload.model_validate(record, strict=True).model_dump(
+                mode="python"
+            )
         )
         for record in records
     ]
@@ -1372,8 +1361,7 @@ def _request_catalog(
                 "prompt_style": prompt_style,
                 "repeat": repeat,
                 "messages": [
-                    message.to_dict()
-                    for message in build_messages(case, prompt_style)
+                    message.to_dict() for message in build_messages(case, prompt_style)
                 ],
                 "generation": {
                     "provider": provider,
@@ -1439,10 +1427,9 @@ def validate_matrix(
             request = request_by_key.get(key)
             if request is None:
                 raise ValueError("result has no matching request")
-            if (
-                record.get("request_id") != request.get("request_id")
-                or record.get("request_hash") != request.get("request_hash")
-            ):
+            if record.get("request_id") != request.get("request_id") or record.get(
+                "request_hash"
+            ) != request.get("request_hash"):
                 raise ValueError("result request identity does not match catalog")
     return {
         "planned": len(expected),
@@ -1553,9 +1540,7 @@ def render_summary(
     matrix = validate_matrix(records, repeats, allow_partial=allow_partial)
     report_status = "COMPLETE" if matrix["missing"] == 0 else "PARTIAL"
     generated = (
-        generated_at.isoformat()
-        if isinstance(generated_at, datetime)
-        else generated_at
+        generated_at.isoformat() if isinstance(generated_at, datetime) else generated_at
     )
     status_counts = Counter(result.status for result in results)
     unknown = set(status_counts) - set(RESULT_STATUSES)
@@ -1600,9 +1585,7 @@ def render_summary(
             "Stability | Input tokens | Output tokens | Total tokens | "
             "Latency ms | Cost |"
         ),
-        (
-            "| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"
-        ),
+        ("| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |"),
     ]
     for prompt_style in PROMPT_STYLES:
         style_rows = [
@@ -1712,13 +1695,16 @@ def _utc_now() -> str:
 
 
 def _manifest_bytes(manifest: RunManifest) -> bytes:
-    return json.dumps(
-        asdict(manifest),
-        ensure_ascii=True,
-        allow_nan=False,
-        sort_keys=True,
-        indent=2,
-    ).encode("utf-8") + b"\n"
+    return (
+        json.dumps(
+            asdict(manifest),
+            ensure_ascii=True,
+            allow_nan=False,
+            sort_keys=True,
+            indent=2,
+        ).encode("utf-8")
+        + b"\n"
+    )
 
 
 def _write_manifest(path: Path, manifest: RunManifest) -> None:
@@ -1797,9 +1783,7 @@ def _parse_jsonl_bytes(
     return records
 
 
-def _read_jsonl(
-    path: Path, *, require_canonical: bool = False
-) -> list[dict[str, Any]]:
+def _read_jsonl(path: Path, *, require_canonical: bool = False) -> list[dict[str, Any]]:
     try:
         content = path.read_bytes()
     except OSError as error:
@@ -2090,9 +2074,7 @@ def _legacy_case_01_correct(response: str) -> bool:
         text = response
     else:
         text = (
-            payload.get("answer", response)
-            if isinstance(payload, dict)
-            else response
+            payload.get("answer", response) if isinstance(payload, dict) else response
         )
     if not isinstance(text, str):
         return False
@@ -2203,9 +2185,7 @@ def _legacy_import(
                 "response": response,
             }
         )
-    directory, final_directory = _staged_output_directory(
-        output_root, "legacy-import"
-    )
+    directory, final_directory = _staged_output_directory(output_root, "legacy-import")
     observed_repeats = sorted({repeat for _, _, repeat in observed_matrix})
     result_bytes = _jsonl_bytes(results)
     manifest = {
@@ -2277,8 +2257,8 @@ def _validate_source_artifact(
         raise ValueError("source result file hash does not match manifest")
     if _sha256_bytes(prompts_bytes) != manifest.prompts_file_sha256:
         raise ValueError("source prompt file hash does not match manifest")
-    expected_prompts = _prompt_catalog_text(requests).replace("\r\n", "\n").encode(
-        "utf-8"
+    expected_prompts = (
+        _prompt_catalog_text(requests).replace("\r\n", "\n").encode("utf-8")
     )
     if prompts_bytes != expected_prompts:
         raise ValueError("source prompt catalog does not match verified requests")
@@ -2306,8 +2286,7 @@ def _validate_source_artifact(
     if matrix["missing"] and manifest.status == "complete":
         raise ValueError("complete manifest has missing result rows")
     validated_results = [
-        BenchmarkResultPayload.model_validate(record, strict=True)
-        for record in records
+        BenchmarkResultPayload.model_validate(record, strict=True) for record in records
     ]
     expected_statuses = Counter(result.status for result in validated_results)
     status_counts = {status: expected_statuses[status] for status in RESULT_STATUSES}
@@ -2329,15 +2308,19 @@ def _validate_source_artifact(
             if manifest.kind == "regrade" and manifest.source is not None
             else manifest.kind
         )
-        expected_summary = render_summary(
-            result_objects,
-            provider=config.provider,
-            model=config.requested_model,
-            repeats=manifest.repeats,
-            generated_at=manifest.report_generated_at or manifest.updated_at,
-            allow_partial=manifest.status == "partial",
-            report_kind=report_kind,
-        ).replace("\r\n", "\n").encode("utf-8")
+        expected_summary = (
+            render_summary(
+                result_objects,
+                provider=config.provider,
+                model=config.requested_model,
+                repeats=manifest.repeats,
+                generated_at=manifest.report_generated_at or manifest.updated_at,
+                allow_partial=manifest.status == "partial",
+                report_kind=report_kind,
+            )
+            .replace("\r\n", "\n")
+            .encode("utf-8")
+        )
         if summary_bytes != expected_summary:
             raise ValueError("source summary is not derived from validated results")
     return SourceArtifactSnapshot(
@@ -2359,9 +2342,7 @@ def _regrade_artifact(
     allow_partial: bool,
 ) -> Path:
     source_directory = source_results_path.parent
-    snapshot = _validate_source_artifact(
-        source_directory, allow_partial=allow_partial
-    )
+    snapshot = _validate_source_artifact(source_directory, allow_partial=allow_partial)
     manifest = snapshot.manifest
     requests = snapshot.requests
     records = snapshot.results
@@ -2373,9 +2354,7 @@ def _regrade_artifact(
         config.output_price_per_million,
     )
     status = "complete" if matrix["missing"] == 0 else "partial"
-    directory, final_directory = _staged_output_directory(
-        output_root, "regrade-v2"
-    )
+    directory, final_directory = _staged_output_directory(output_root, "regrade-v2")
     started_at = _utc_now()
     source = {
         "run_id": manifest.run_id,
@@ -2406,9 +2385,7 @@ def _regrade_artifact(
             directory / "results.jsonl", (asdict(result) for result in results)
         )
         generated_at = (
-            manifest.report_generated_at
-            or manifest.completed_at
-            or manifest.updated_at
+            manifest.report_generated_at or manifest.completed_at or manifest.updated_at
         )
         summary = render_summary(
             results,
@@ -2498,12 +2475,8 @@ def build_parser() -> argparse.ArgumentParser:
         type=Path,
         default=Path("artifacts/context_engineering_compare"),
     )
-    parser.add_argument(
-        "--input-price-per-million", type=_finite_float(minimum=0)
-    )
-    parser.add_argument(
-        "--output-price-per-million", type=_finite_float(minimum=0)
-    )
+    parser.add_argument("--input-price-per-million", type=_finite_float(minimum=0))
+    parser.add_argument("--output-price-per-million", type=_finite_float(minimum=0))
     parser.add_argument("--dry-run", action="store_true")
     parser.add_argument("--regrade-results", type=Path)
     parser.add_argument("--allow-partial", action="store_true")
@@ -2513,9 +2486,7 @@ def build_parser() -> argparse.ArgumentParser:
 
 def _run_live(args: argparse.Namespace, requests: list[dict[str, Any]]) -> Path:
     config = _config_from_args(args)
-    staging_directory, directory = _staged_output_directory(
-        args.output_dir, "run-v2"
-    )
+    staging_directory, directory = _staged_output_directory(args.output_dir, "run-v2")
     run_id = uuid.uuid4().hex
     started_at = _utc_now()
     try:
@@ -2631,7 +2602,9 @@ def _run_live(args: argparse.Namespace, requests: list[dict[str, Any]]) -> Path:
         _write_manifest(manifest_path, manifest)
     except (Exception, KeyboardInterrupt) as error:
         final_timestamp = _utc_now()
-        interrupted_at = final_timestamp if isinstance(error, KeyboardInterrupt) else None
+        interrupted_at = (
+            final_timestamp if isinstance(error, KeyboardInterrupt) else None
+        )
         try:
             results = _load_persisted_results(results_path)
             persisted_request_ids = {result.request_id for result in results}
