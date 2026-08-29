@@ -31,6 +31,32 @@ def test_default_markdown_loader_preserves_citation_paths_and_source_types():
     assert "# ACFS Architecture Overview" in by_path[architecture_path].content
 
 
+def test_nested_corpus_root_preserves_category_source_types():
+    """Loading below a category directory keeps ticket and runbook types."""
+    incident_documents = load_markdown_docs(
+        REPOSITORY_ROOT / "data" / "sample_docs" / "tickets" / "incidents"
+    )
+    assert incident_documents
+    assert all(document.source_type == "ticket" for document in incident_documents)
+
+    runbook_documents = load_markdown_docs(
+        REPOSITORY_ROOT / "data" / "sample_docs" / "runbooks"
+    )
+    assert runbook_documents
+    assert all(document.source_type == "runbook" for document in runbook_documents)
+
+
+def test_nested_external_root_preserves_category_source_types(tmp_path: Path):
+    """Roots outside the repository still classify from retained ancestors."""
+    ticket_directory = tmp_path / "tickets" / "incidents"
+    ticket_directory.mkdir(parents=True)
+    (ticket_directory / "INC-1.md").write_text("# Incident\n", encoding="utf-8")
+
+    documents = load_markdown_docs(ticket_directory)
+
+    assert [document.source_type for document in documents] == ["ticket"]
+
+
 def test_markdown_loader_is_recursive_deterministic_and_ignores_other_files(
     tmp_path: Path,
 ):

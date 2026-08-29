@@ -156,9 +156,14 @@ def _document_id(source_path: str) -> str:
     return f"doc-{digest}"
 
 
-def _document_source_type(path: Path, root: Path) -> SourceType:
-    path_with_root = path.relative_to(root.parent)
-    parent_names = {part.casefold() for part in path_with_root.parent.parts}
+def _document_source_type(path: Path, _root: Path) -> SourceType:
+    # Classify from every ancestor above the file, not only those below the
+    # supplied root, so nested roots keep their category (ticket/runbook).
+    try:
+        classified_path = path.relative_to(REPOSITORY_ROOT)
+    except ValueError:
+        classified_path = path
+    parent_names = {part.casefold() for part in classified_path.parent.parts}
     if "tickets" in parent_names:
         return "ticket"
     if "runbooks" in parent_names:
