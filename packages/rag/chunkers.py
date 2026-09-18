@@ -80,7 +80,11 @@ def chunk_documents(
 
 
 def chunk_statistics(chunks: Iterable[Chunk]) -> dict[str, int]:
-    """Count chunks, their source documents, and the characters they cover."""
+    """Count chunks, the documents that produced them, and their characters.
+
+    ``total_characters`` sums the characters stored in the chunks, so overlapping
+    text is counted once per chunk rather than once per document.
+    """
     chunk_list = list(chunks)
     return {
         "chunk_count": len(chunk_list),

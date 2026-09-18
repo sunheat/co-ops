@@ -21,7 +21,7 @@ def main() -> None:
     print(f"documents: {len(documents)}")
     print(f"chunks: {statistics['chunk_count']}")
     print(f"indexed documents: {statistics['document_count']}")
-    print(f"characters: {statistics['total_characters']}")
+    print(f"characters in chunks: {statistics['total_characters']}")
 
     print("\nSample chunks:")
     for chunk in chunks[:SAMPLE_CHUNK_LIMIT]:
