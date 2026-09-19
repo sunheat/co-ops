@@ -51,6 +51,7 @@ Run the offline examples from the repository root:
 uv run python -m examples.prompt_building
 uv run python -m examples.context_engineered_prompt
 uv run python -m examples.structured_output
+uv run python -m examples.chunk_preview
 ```
 
 Generate the offline prompt-quality benchmark catalog without making a model
