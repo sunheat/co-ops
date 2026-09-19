@@ -35,10 +35,7 @@ def chunk_document(
 
     Boundaries are plain character offsets, so no chunk is boundary-aware yet.
     """
-    if chunk_size <= 0:
-        raise ValueError("chunk_size must be positive")
-    if not 0 <= overlap < chunk_size:
-        raise ValueError("overlap must satisfy 0 <= overlap < chunk_size")
+    _validate_chunk_parameters(chunk_size, overlap)
 
     content = document.content
     step = chunk_size - overlap
@@ -72,11 +69,19 @@ def chunk_documents(
     overlap: int = DEFAULT_CHUNK_OVERLAP,
 ) -> list[Chunk]:
     """Chunk documents in input order so loader ordering is preserved."""
+    _validate_chunk_parameters(chunk_size, overlap)
     return [
         chunk
         for document in documents
         for chunk in chunk_document(document, chunk_size=chunk_size, overlap=overlap)
     ]
+
+
+def _validate_chunk_parameters(chunk_size: int, overlap: int) -> None:
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive")
+    if not 0 <= overlap < chunk_size:
+        raise ValueError("overlap must satisfy 0 <= overlap < chunk_size")
 
 
 def chunk_statistics(chunks: Iterable[Chunk]) -> dict[str, int]:

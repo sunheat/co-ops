@@ -108,6 +108,18 @@ def test_invalid_chunk_parameters_raise_value_error(chunk_size: int, overlap: in
         chunk_document(document, chunk_size=chunk_size, overlap=overlap)
 
 
+@pytest.mark.parametrize(
+    ("chunk_size", "overlap"),
+    [(0, 0), (-1, 0), (10, -1), (10, 10), (10, 11)],
+)
+def test_chunk_documents_rejects_invalid_parameters_for_empty_input(
+    chunk_size: int, overlap: int
+):
+    """Invalid batch settings fail even when there are no documents to chunk."""
+    with pytest.raises(ValueError):
+        chunk_documents([], chunk_size=chunk_size, overlap=overlap)
+
+
 def test_chunk_documents_preserves_input_order_and_respects_window():
     """Batching keeps loader order and never exceeds the configured window."""
     documents = [
