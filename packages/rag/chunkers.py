@@ -52,7 +52,11 @@ def chunk_document(
                 content=content[start:end],
                 start_char=start,
                 end_char=end,
-                metadata={**document.metadata, "chunk_index": len(chunks)},
+                metadata={
+                    **document.metadata,
+                    "source_type": document.source_type,
+                    "chunk_index": len(chunks),
+                },
             )
         )
         if end == len(content):

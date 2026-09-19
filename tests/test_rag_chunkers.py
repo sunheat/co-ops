@@ -57,7 +57,12 @@ def test_chunk_metadata_carries_document_metadata_and_index():
     chunks = chunk_document(document, chunk_size=4, overlap=0)
 
     assert [chunk.metadata for chunk in chunks] == [
-        {"format": "markdown", "extension": ".md", "chunk_index": index}
+        {
+            "format": "markdown",
+            "extension": ".md",
+            "source_type": "doc",
+            "chunk_index": index,
+        }
         for index in range(3)
     ]
     assert all(chunk.document_id == "doc-test" for chunk in chunks)
@@ -79,10 +84,25 @@ def test_short_document_yields_one_chunk_and_empty_document_yields_none():
             content="short",
             start_char=0,
             end_char=5,
-            metadata={"chunk_index": 0},
+            metadata={"source_type": "doc", "chunk_index": 0},
         )
     ]
     assert chunk_document(empty_document) == []
+
+
+def test_chunk_metadata_preserves_source_type_not_encoded_in_source_path():
+    """Normalized document classification survives chunking independently of its path."""
+    document = Document(
+        id="doc-ticket",
+        source_path="ACME-123.md",
+        source_type="ticket",
+        content="Ticket content",
+    )
+
+    chunks = chunk_document(document)
+
+    assert chunks[0].source_path == "ACME-123.md"
+    assert chunks[0].metadata["source_type"] == "ticket"
 
 
 def test_chunk_ids_are_unique_and_stable_across_runs():
