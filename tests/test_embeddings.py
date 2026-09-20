@@ -217,6 +217,48 @@ def test_embed_rejects_missing_embedding_index():
             client.embed(["first", "second"], model="text-embedding-3-small")
 
 
+@pytest.mark.parametrize("coordinate", ["NaN", "Infinity", "-Infinity"])
+def test_embed_rejects_non_finite_embedding_coordinates(coordinate):
+    """Non-finite coordinates are rejected instead of returned."""
+
+    def handler(request):
+        return httpx.Response(
+            200,
+            json={
+                "model": "text-embedding-3-small",
+                "data": [{"index": 0, "embedding": [coordinate]}],
+            },
+        )
+
+    with EmbeddingClient(base_url="http://testserver/v1") as client:
+        _replace_transport(client, handler)
+        with pytest.raises(InvalidResponseError, match="non-finite"):
+            client.embed("first", model="text-embedding-3-small")
+
+
+def test_embed_rejects_inconsistent_embedding_dimensions_and_logs_failure(tmp_path):
+    """Ragged vectors fail validation and produce an error usage record."""
+    log_path = tmp_path / "usage.jsonl"
+
+    def handler(request):
+        response = _success_response(count=2)
+        response["data"][1]["embedding"].append(4.0)
+        return httpx.Response(200, json=response)
+
+    with EmbeddingClient(
+        base_url="http://testserver/v1",
+        provider="openai",
+        usage_logger=UsageLogger(log_path),
+    ) as client:
+        _replace_transport(client, handler)
+        with pytest.raises(InvalidResponseError, match="inconsistent dimensions"):
+            client.embed(["first", "second"], model="text-embedding-3-small")
+
+    records = [json.loads(line) for line in log_path.read_text().splitlines()]
+    assert len(records) == 1
+    assert records[0]["status"] == "error"
+
+
 def test_embed_tolerates_non_dict_usage():
     """A non-object usage field is ignored instead of raising."""
 

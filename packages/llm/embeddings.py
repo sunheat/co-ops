@@ -215,12 +215,24 @@ class EmbeddingClient:
                     attempts=attempts,
                 )
             try:
-                embeddings.append([float(value) for value in vector])
-            except (TypeError, ValueError) as exc:
+                embedding = [float(value) for value in vector]
+            except (TypeError, ValueError, OverflowError) as exc:
                 raise InvalidResponseError(
                     "Provider returned non-numeric embedding values",
                     attempts=attempts,
                 ) from exc
+            if any(not isfinite(value) for value in embedding):
+                raise InvalidResponseError(
+                    "Provider returned a non-finite embedding coordinate",
+                    attempts=attempts,
+                )
+            embeddings.append(embedding)
+
+        if any(len(embedding) != len(embeddings[0]) for embedding in embeddings[1:]):
+            raise InvalidResponseError(
+                "Provider returned embeddings with inconsistent dimensions",
+                attempts=attempts,
+            )
 
         usage = None
         usage_data = data.get("usage")
