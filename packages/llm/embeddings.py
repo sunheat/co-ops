@@ -194,11 +194,17 @@ class EmbeddingClient:
             )
         # Providers may return items out of order; the index field keeps each
         # vector aligned with its input position.
-        if all(
-            isinstance(item, dict) and isinstance(item.get("index"), int)
-            for item in items
+        indexes = [
+            item.get("index") if isinstance(item, dict) else None for item in items
+        ]
+        if any(type(index) is not int for index in indexes) or sorted(indexes) != list(
+            range(len(items))
         ):
-            items = sorted(items, key=lambda item: item["index"])
+            raise InvalidResponseError(
+                "Provider returned invalid embedding indexes",
+                attempts=attempts,
+            )
+        items = sorted(items, key=lambda item: item["index"])
 
         embeddings: list[list[float]] = []
         for item in items:

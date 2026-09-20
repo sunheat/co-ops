@@ -178,6 +178,45 @@ def test_embed_aligns_vectors_with_input_order_using_index():
     assert response.embeddings == [[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]]
 
 
+@pytest.mark.parametrize(
+    "indexes",
+    [
+        [0, 0],
+        [-1, 0],
+        [0, 2],
+        [0, "1"],
+        [False, 1],
+    ],
+)
+def test_embed_rejects_invalid_embedding_indexes(indexes):
+    """Duplicate, invalid, and out-of-range indexes are rejected."""
+
+    def handler(request):
+        response = _success_response()
+        for item, index in zip(response["data"], indexes):
+            item["index"] = index
+        return httpx.Response(200, json=response)
+
+    with EmbeddingClient(base_url="http://testserver/v1") as client:
+        _replace_transport(client, handler)
+        with pytest.raises(InvalidResponseError, match="invalid embedding indexes"):
+            client.embed(["first", "second"], model="text-embedding-3-small")
+
+
+def test_embed_rejects_missing_embedding_index():
+    """An embedding response must include an index for every vector."""
+
+    def handler(request):
+        response = _success_response()
+        del response["data"][1]["index"]
+        return httpx.Response(200, json=response)
+
+    with EmbeddingClient(base_url="http://testserver/v1") as client:
+        _replace_transport(client, handler)
+        with pytest.raises(InvalidResponseError, match="invalid embedding indexes"):
+            client.embed(["first", "second"], model="text-embedding-3-small")
+
+
 def test_embed_tolerates_non_dict_usage():
     """A non-object usage field is ignored instead of raising."""
 
