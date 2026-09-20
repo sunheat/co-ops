@@ -5,6 +5,11 @@ from typing import TYPE_CHECKING, Any
 
 from .client import LLMClient, chat, close_default_router
 from .config import LLMSettings, ProviderConfig, load_settings
+from .embeddings import (
+    EmbeddingClient,
+    EmbeddingResponse,
+    embedding_client_from_env,
+)
 from .errors import (
     APIError,
     AuthenticationError,
@@ -97,6 +102,8 @@ __all__ = [
     "ConfigError",
     "ContextBlock",
     "ContextBuilder",
+    "EmbeddingClient",
+    "EmbeddingResponse",
     "InvalidResponseError",
     "InvestigationPlan",
     "LLMClient",
@@ -121,6 +128,7 @@ __all__ = [
     "UsageTracker",
     "chat",
     "close_default_router",
+    "embedding_client_from_env",
     "estimate_cost_usd",
     "get_provider",
     "investigation_plan_correction_instruction",
