@@ -3,9 +3,12 @@
 from __future__ import annotations
 
 import json
+import logging
 import threading
 from dataclasses import asdict, dataclass
 from pathlib import Path
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -149,6 +152,23 @@ class UsageLogger:
             self.path.parent.mkdir(parents=True, exist_ok=True)
             with self.path.open("a", encoding="utf-8") as file:
                 file.write(line + "\n")
+
+
+def append_usage_entry(
+    usage_logger: UsageLogger | None,
+    entry: UsageLogEntry,
+) -> None:
+    """Append one entry, downgrading file I/O failures to a warning."""
+    if usage_logger is None:
+        return
+    try:
+        usage_logger.log(entry)
+    except OSError:
+        logger.warning(
+            "Could not write LLM usage log to %s",
+            usage_logger.path,
+            exc_info=True,
+        )
 
 
 class UsageTracker:
