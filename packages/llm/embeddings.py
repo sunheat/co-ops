@@ -193,9 +193,11 @@ class EmbeddingClient:
                 attempts=attempts,
             )
         # Providers may return items out of order; the index field keeps each
-        # vector aligned with its input position.
+        # vector aligned with its input position. Some providers (Gemini) omit
+        # the field for index 0, so a missing index means 0 and must not
+        # collide with another item's index.
         indexes = [
-            item.get("index") if isinstance(item, dict) else None for item in items
+            item.get("index", 0) if isinstance(item, dict) else None for item in items
         ]
         if any(type(index) is not int for index in indexes) or sorted(indexes) != list(
             range(len(items))
@@ -204,7 +206,7 @@ class EmbeddingClient:
                 "Provider returned invalid embedding indexes",
                 attempts=attempts,
             )
-        items = sorted(items, key=lambda item: item["index"])
+        items = sorted(items, key=lambda item: item.get("index", 0))
 
         embeddings: list[list[float]] = []
         for item in items:
