@@ -37,6 +37,16 @@ def test_structured_output_package_is_importable_first():
     assert result.returncode == 0, result.stderr
 
 
+def test_rag_package_is_importable_first():
+    """The rag boundary imports its llm and prompt dependencies in a fresh process."""
+    result = run_fresh_import(
+        "packages.rag",
+        "RagPipeline, chunk_documents, load_markdown_docs",
+    )
+
+    assert result.returncode == 0, result.stderr
+
+
 def test_llm_root_preserves_legacy_application_exports():
     """Legacy package-root imports still work in a fresh interpreter."""
     result = run_fresh_import(

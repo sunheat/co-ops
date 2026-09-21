@@ -3,7 +3,7 @@
 from importlib import import_module
 from typing import TYPE_CHECKING, Any
 
-from .client import LLMClient, chat, close_default_router
+from .client import LLMClient, chat, chat_client_from_env, close_default_router
 from .config import LLMSettings, ProviderConfig, load_settings
 from .embeddings import (
     EmbeddingClient,
@@ -127,6 +127,7 @@ __all__ = [
     "UsageLogger",
     "UsageTracker",
     "chat",
+    "chat_client_from_env",
     "close_default_router",
     "embedding_client_from_env",
     "estimate_cost_usd",

@@ -6,10 +6,12 @@ from packages.llm import (
     ChatChoice,
     ChatMessage,
     ChatResponse,
+    ConfigError,
     LLMClient,
     LLMResponse,
     Usage,
     UsageTracker,
+    chat_client_from_env,
 )
 from packages.llm.errors import APIError
 
@@ -332,6 +334,54 @@ def test_llm_response_without_usage():
     assert response.completion_tokens == 0
     assert response.total_tokens == 0
     assert response.latency_ms is None
+
+
+def test_chat_client_from_env_resolves_provider_and_default_model():
+    """LLM_PROVIDER selects the provider and its default chat model."""
+    client, model = chat_client_from_env(
+        {
+            "LLM_PROVIDER": "openai",
+            "OPENAI_API_KEY": "test-key",
+        }
+    )
+    with client:
+        assert client.provider == "openai"
+        assert client.base_url == "https://api.openai.com/v1"
+        assert client.api_key == "test-key"
+    assert model == "gpt-4o-mini"
+
+
+def test_chat_client_from_env_falls_back_to_azure_deployment():
+    """Without LLM_MODEL, Azure uses the deployment name as the model."""
+    client, model = chat_client_from_env(
+        {
+            "LLM_PROVIDER": "azure",
+            "AZURE_OPENAI_API_KEY": "test-key",
+            "AZURE_OPENAI_ENDPOINT": "https://myres.openai.azure.com",
+            "AZURE_OPENAI_DEPLOYMENT": "my-gpt4o",
+        }
+    )
+    with client:
+        assert client.provider == "azure"
+        assert client.base_url == "https://myres.openai.azure.com/openai/v1"
+    assert model == "my-gpt4o"
+
+
+def test_chat_client_from_env_requires_model_for_unknown_default():
+    """A provider without a default chat model needs an explicit LLM_MODEL."""
+    with pytest.raises(ConfigError, match="No default chat model"):
+        chat_client_from_env(
+            {
+                "LLM_PROVIDER": "openrouter",
+                "OPENROUTER_API_KEY": "test-key",
+            }
+        )
+
+
+def test_chat_client_from_env_rejects_unconfigured_provider():
+    """A provider that lacks credentials is rejected with a clear error."""
+    with pytest.raises(ConfigError, match="not configured"):
+        chat_client_from_env({"LLM_PROVIDER": "gemini"})
 
 
 def test_default_router_lifecycle():
