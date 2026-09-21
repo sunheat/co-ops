@@ -139,3 +139,19 @@ def test_search_rejects_unusable_queries_and_top_k():
         store.search((1.0, 0.0), top_k=0)
     with pytest.raises(ValueError, match="top_k"):
         store.search((1.0, 0.0), top_k=-1)
+
+
+@pytest.mark.parametrize("scale", [1e200, 1e-200])
+def test_search_handles_finite_vectors_at_extreme_scales(scale):
+    """Finite non-zero vectors keep their cosine score at extreme magnitudes."""
+    store = make_store(
+        [
+            ("chunk-axis", (scale, 0.0)),
+            ("chunk-diagonal", (scale, scale)),
+        ]
+    )
+
+    results = store.search((scale, scale))
+
+    assert [result.chunk.id for result in results] == ["chunk-diagonal", "chunk-axis"]
+    assert [result.score for result in results] == pytest.approx([1.0, 1 / 2**0.5])

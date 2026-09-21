@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 from dataclasses import dataclass
-from math import isfinite, sqrt
+from math import hypot, isfinite
 
 from .chunkers import Chunk
 
@@ -29,7 +29,7 @@ class InMemoryVectorStore:
     """
 
     def __init__(self) -> None:
-        self._entries: list[tuple[Chunk, tuple[float, ...], float]] = []
+        self._entries: list[tuple[Chunk, tuple[float, ...]]] = []
         self._dimension: int | None = None
 
     def add(self, chunk: Chunk, vector: Sequence[float]) -> None:
@@ -39,12 +39,12 @@ class InMemoryVectorStore:
             ValueError: If the vector is empty, non-finite, zero-norm, or has
                 a different dimension than the vectors already stored.
         """
-        stored = _validated_vector(vector)
+        stored = _unit_vector(vector)
         if self._dimension is None:
             self._dimension = len(stored)
         else:
             self._check_dimension(len(stored), "vector")
-        self._entries.append((chunk, stored, _norm(stored)))
+        self._entries.append((chunk, stored))
 
     def search(
         self,
@@ -57,15 +57,14 @@ class InMemoryVectorStore:
         """
         if top_k < 1:
             raise ValueError("top_k must be positive")
-        query = _validated_vector(vector)
+        query = _unit_vector(vector)
         self._check_dimension(len(query), "query")
 
-        query_norm = _norm(query)
         # One linear scan per query; revisit with a vector database or a
         # numeric library once the corpus outgrows a few thousand chunks.
         results = [
-            SearchResult(chunk=chunk, score=_dot(query, stored) / (query_norm * norm))
-            for chunk, stored, norm in self._entries
+            SearchResult(chunk=chunk, score=_dot(query, stored))
+            for chunk, stored in self._entries
         ]
         results.sort(key=lambda result: result.score, reverse=True)
         return results[:top_k]
@@ -82,23 +81,22 @@ class InMemoryVectorStore:
             )
 
 
-def _validated_vector(vector: Sequence[float]) -> tuple[float, ...]:
+def _unit_vector(vector: Sequence[float]) -> tuple[float, ...]:
     values = tuple(float(value) for value in vector)
     if not values:
         raise ValueError("vector must contain at least one value")
     if any(not isfinite(value) for value in values):
         raise ValueError("vector values must be finite")
-    if _norm(values) == 0.0:
+    scale = max(abs(value) for value in values)
+    if scale == 0.0:
         raise ValueError("vector must have a non-zero norm")
-    return values
+    scaled = tuple(value / scale for value in values)
+    norm = hypot(*scaled)
+    return tuple(value / norm for value in scaled)
 
 
 def _dot(left: Sequence[float], right: Sequence[float]) -> float:
     return sum(a * b for a, b in zip(left, right))
-
-
-def _norm(vector: Sequence[float]) -> float:
-    return sqrt(sum(value * value for value in vector))
 
 
 __all__ = [
