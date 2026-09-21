@@ -203,8 +203,23 @@ def test_embed_rejects_invalid_embedding_indexes(indexes):
             client.embed(["first", "second"], model="text-embedding-3-small")
 
 
-def test_embed_rejects_missing_embedding_index():
-    """An embedding response must include an index for every vector."""
+def test_embed_accepts_omitted_index_for_the_first_item():
+    """Gemini omits the index field for index 0; the other indexes still order items."""
+
+    def handler(request):
+        response = _success_response()
+        del response["data"][0]["index"]
+        return httpx.Response(200, json=response)
+
+    with EmbeddingClient(base_url="http://testserver/v1") as client:
+        _replace_transport(client, handler)
+        response = client.embed(["first", "second"], model="text-embedding-3-small")
+
+    assert response.embeddings == [[1.0, 1.0, 1.0], [2.0, 2.0, 2.0]]
+
+
+def test_embed_rejects_missing_index_that_collides_with_index_zero():
+    """A missing index counts as 0, so omitting a later item's index is rejected."""
 
     def handler(request):
         response = _success_response()
