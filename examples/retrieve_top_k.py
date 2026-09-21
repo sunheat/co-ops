@@ -67,7 +67,8 @@ def main() -> None:
             f"   {preview}"
         )
 
-    print(f"\ntokens:    {index_tokens} (index)")
+    if index_tokens:
+        print(f"\ntokens:    {index_tokens} (index)")
     print(f"index:     {index_latency_ms:.0f} ms")
     if query_response.latency_ms is not None:
         print(f"query:     {query_response.latency_ms:.0f} ms")
