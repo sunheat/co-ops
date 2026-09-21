@@ -42,11 +42,8 @@ class InMemoryVectorStore:
         stored = _validated_vector(vector)
         if self._dimension is None:
             self._dimension = len(stored)
-        elif len(stored) != self._dimension:
-            raise ValueError(
-                f"vector dimension {len(stored)} does not match "
-                f"store dimension {self._dimension}"
-            )
+        else:
+            self._check_dimension(len(stored), "vector")
         self._entries.append((chunk, stored, _norm(stored)))
 
     def search(
@@ -61,15 +58,11 @@ class InMemoryVectorStore:
         if top_k < 1:
             raise ValueError("top_k must be positive")
         query = _validated_vector(vector)
-        if self._dimension is not None and len(query) != self._dimension:
-            raise ValueError(
-                f"query dimension {len(query)} does not match "
-                f"store dimension {self._dimension}"
-            )
+        self._check_dimension(len(query), "query")
 
         query_norm = _norm(query)
-        # ponytail: linear scan over every vector; swap in numpy or a vector
-        # database once the corpus outgrows a few thousand chunks.
+        # One linear scan per query; revisit with a vector database or a
+        # numeric library once the corpus outgrows a few thousand chunks.
         results = [
             SearchResult(chunk=chunk, score=_dot(query, stored) / (query_norm * norm))
             for chunk, stored, norm in self._entries
@@ -80,6 +73,13 @@ class InMemoryVectorStore:
     def __len__(self) -> int:
         """Number of stored chunk vectors."""
         return len(self._entries)
+
+    def _check_dimension(self, length: int, label: str) -> None:
+        if self._dimension is not None and length != self._dimension:
+            raise ValueError(
+                f"{label} dimension {length} does not match "
+                f"store dimension {self._dimension}"
+            )
 
 
 def _validated_vector(vector: Sequence[float]) -> tuple[float, ...]:

@@ -13,6 +13,7 @@ from packages.rag import (
     load_markdown_docs,
     load_text_docs,
 )
+from packages.rag.vector_store_in_memory import DEFAULT_TOP_K
 
 DIMENSION = 2
 
@@ -69,8 +70,8 @@ def test_main_indexes_in_batches_and_prints_ranked_chunks(monkeypatch, capsys):
     assert all(size <= retrieve_top_k.EMBED_BATCH_SIZE for size in call_sizes)
     assert f"chunks:    {chunk_count} (dimension {DIMENSION})" in output
     assert f"query:     {retrieve_top_k.DEFAULT_QUERY}" in output
-    assert "Top 5 chunks:" in output
-    assert output.count("score 1.0000") == 5
+    assert f"Top {DEFAULT_TOP_K} chunks:" in output
+    assert output.count("score 1.0000") == DEFAULT_TOP_K
 
 
 def test_main_embeds_a_query_from_the_command_line(monkeypatch, capsys):

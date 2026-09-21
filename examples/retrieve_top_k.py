@@ -43,17 +43,16 @@ def main() -> None:
             index_vectors.extend(response.embeddings)
             index_tokens += response.usage.total_tokens if response.usage else 0
             index_latency_ms += response.latency_ms or 0.0
-        index_model = response.model
         query_response = client.embed(query, model=model)
 
     store = InMemoryVectorStore()
-    for chunk, vector in zip(chunks, index_vectors):
+    for chunk, vector in zip(chunks, index_vectors, strict=True):
         store.add(chunk, vector)
 
     results = store.search(query_response.embeddings[0])
 
-    print(f"model:     {index_model}")
-    print(f"chunks:    {len(store)} (dimension {len(index_vectors[0])})")
+    print(f"model:     {query_response.model}")
+    print(f"chunks:    {len(store)} (dimension {query_response.dimension})")
     print(f"query:     {query}")
     print(f"\nTop {len(results)} chunks:")
     for rank, result in enumerate(results, start=1):
