@@ -18,14 +18,17 @@ from .loaders import (
     load_markdown_docs,
     load_text_docs,
 )
+from .vector_store_in_memory import InMemoryVectorStore, SearchResult
 
 __all__ = [
     "BuiltContext",
     "Chunk",
     "ContextBuilder",
     "Document",
+    "InMemoryVectorStore",
     "RetrievedChunk",
     "RetrievedContext",
+    "SearchResult",
     "SourceType",
     "chunk_document",
     "chunk_documents",
