@@ -184,9 +184,9 @@ def test_retry_after_header_is_used():
 
 
 @pytest.mark.parametrize("status_code", [408, 409, 503])
-def test_retryable_http_errors_honor_retry_after(status_code):
+def test_retryable_http_errors_honor_retry_after(status_code, monkeypatch):
     calls = 0
-    observed_retry_after = []
+    observed_sleeps = []
 
     def handler(request):
         nonlocal calls
@@ -199,18 +199,17 @@ def test_retryable_http_errors_honor_retry_after(status_code):
             )
         return httpx.Response(200, json=_success_response())
 
+    monkeypatch.setattr(
+        "packages.llm._http.time.sleep",
+        lambda delay: observed_sleeps.append(delay),
+    )
+
     with LLMClient(
         base_url="http://testserver/v1",
         max_retries=1,
         retry_base_delay=0,
     ) as client:
         _replace_transport(client, handler)
-
-        def observe_delay(attempt, error):
-            observed_retry_after.append(error.retry_after)
-            return 0
-
-        client._retry_delay = observe_delay
         response = client.chat(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": "hi"}],
@@ -218,4 +217,4 @@ def test_retryable_http_errors_honor_retry_after(status_code):
 
     assert calls == 2
     assert response.attempts == 2
-    assert observed_retry_after == [7.0]
+    assert observed_sleeps == [7.0]
