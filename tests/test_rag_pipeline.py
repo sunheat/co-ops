@@ -25,6 +25,18 @@ MARGIN_CONTENT = "Margin is calculated in MarginCalculator."
 RUNBOOK_CONTENT = "A margin result mismatch often starts with a delayed trade import."
 FAQ_CONTENT = "The support desk answers questions during Sydney business hours."
 
+# Default model reply: one grounded citation plus one fabricated citation.
+CITATION_JSON = json.dumps(
+    {
+        "answer": CHAT_ANSWER,
+        "sources": [
+            {"source_path": MARGIN_PATH, "chunk_id": "chunk-margin"},
+            {"source_path": "data/fabricated.md", "chunk_id": "chunk-ghost"},
+        ],
+        "confidence": "high",
+    }
+)
+
 
 def make_chunk(chunk_id: str, source_path: str, content: str) -> Chunk:
     """Build a chunk with a stable test identity."""
@@ -101,7 +113,7 @@ def make_clients(
                 "choices": [
                     {
                         "index": 0,
-                        "message": {"role": "assistant", "content": CHAT_ANSWER},
+                        "message": {"role": "assistant", "content": CITATION_JSON},
                         "finish_reason": "stop",
                     }
                 ],
@@ -139,8 +151,8 @@ def make_pipeline(
     )
 
 
-def test_ask_returns_answer_with_sources_from_retrieved_chunks():
-    """The answer reports the ranked hits and their chunk-level sources."""
+def test_ask_returns_answer_with_validated_sources():
+    """Only citations grounded in the retrieved chunks are kept."""
     embedding_client, chat_client = make_clients(margin_vectors())
     pipeline = make_pipeline(embedding_client, chat_client)
     pipeline.index(margin_chunks())
@@ -148,17 +160,53 @@ def test_ask_returns_answer_with_sources_from_retrieved_chunks():
     answer = pipeline.ask(QUESTION)
 
     assert answer.answer == CHAT_ANSWER
+    assert answer.confidence == "high"
+    assert [source.chunk_id for source in answer.sources] == ["chunk-margin"]
+    assert [source.source_path for source in answer.sources] == [MARGIN_PATH]
+    assert [source.chunk_id for source in answer.invalid_sources] == ["chunk-ghost"]
     expected_ids = ["chunk-margin", "chunk-runbook", "chunk-faq"]
     assert [result.chunk.id for result in answer.retrieved] == expected_ids
-    assert [source.chunk_id for source in answer.sources] == expected_ids
-    assert [source.source_path for source in answer.sources] == [
-        MARGIN_PATH,
-        RUNBOOK_PATH,
-        FAQ_PATH,
-    ]
     assert answer.usage is not None
     assert answer.usage.total_tokens == 15
     assert answer.latency_ms is not None
+
+
+def test_ask_raises_when_the_model_reply_is_not_json():
+    """Non-JSON model output surfaces as a ValueError, not a silent answer."""
+    embedding_client, chat_client = make_clients(margin_vectors())
+
+    def text_reply_handler(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(
+            200,
+            json={
+                "id": "chatcmpl-test",
+                "model": "test-chat",
+                "choices": [
+                    {
+                        "index": 0,
+                        "message": {"role": "assistant", "content": CHAT_ANSWER},
+                        "finish_reason": "stop",
+                    }
+                ],
+                "usage": {
+                    "prompt_tokens": 10,
+                    "completion_tokens": 5,
+                    "total_tokens": 15,
+                },
+            },
+        )
+
+    chat_client._client.close()
+    chat_client._client = httpx.Client(
+        base_url=chat_client.base_url,
+        transport=httpx.MockTransport(text_reply_handler),
+        timeout=chat_client.timeout,
+    )
+    pipeline = make_pipeline(embedding_client, chat_client)
+    pipeline.index(margin_chunks())
+
+    with pytest.raises(ValueError, match="not valid JSON"):
+        pipeline.ask(QUESTION)
 
 
 def test_ask_sends_labeled_context_and_question_to_the_chat_model():
@@ -173,10 +221,11 @@ def test_ask_sends_labeled_context_and_question_to_the_chat_model():
     payload = chat_payloads[0]
     assert payload["model"] == "test-chat"
     assert payload["temperature"] == rag_pipeline_module.DEFAULT_TEMPERATURE
+    assert payload["response_format"] == {"type": "json_object"}
     system_message, user_message = payload["messages"]
     assert system_message["role"] == "system"
     assert system_message["content"] == rag_pipeline_module.SYSTEM_PROMPT
-    assert f"[{MARGIN_PATH}]" in user_message["content"]
+    assert f"[{MARGIN_PATH} (chunk_id: chunk-margin)]" in user_message["content"]
     assert MARGIN_CONTENT in user_message["content"]
     assert QUESTION in user_message["content"]
 
@@ -228,7 +277,11 @@ def test_ask_rag_example_prints_answer_sources_and_usage(monkeypatch, capsys):
     output = capsys.readouterr().out
     assert f"question:  {ask_rag.DEFAULT_QUESTION}" in output
     assert f"\nAnswer:\n{CHAT_ANSWER}" in output
-    assert "\nSources:" in output
+    assert "\nConfidence: high" in output
+    # The mock citation does not exist in the real corpus, so it is rejected.
+    assert "\nSources:\n" in output
+    assert "\nRejected citations (not grounded in retrieved chunks):" in output
+    assert "chunk-margin" in output
     assert "\nRetrieved chunks:" in output
     assert "\nToken usage:" in output
     assert "total 15" in output
