@@ -64,12 +64,13 @@ uv run python -m examples.context_engineering_compare --dry-run --repeats 2 --se
 The live gateway reads provider settings from environment variables. For a
 live call, create a local `.env` with the required provider credentials and
 run an example with `uv run --env-file .env ...`. For example, embed one
-corpus chunk and print its vector dimension, or retrieve the chunks closest
-to a question:
+corpus chunk and print its vector dimension, retrieve the chunks closest to a
+question, or answer the question from those chunks:
 
 ```bash
 uv run --env-file .env python -m examples.embed_chunk
 uv run --env-file .env python -m examples.retrieve_top_k "Where is margin calculated?"
+uv run --env-file .env python -m examples.ask_rag "Where is margin calculated?"
 ```
 
 Do not commit credentials or generated live artifacts.

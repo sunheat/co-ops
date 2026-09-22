@@ -18,6 +18,7 @@ from .loaders import (
     load_markdown_docs,
     load_text_docs,
 )
+from .rag_pipeline import RagAnswer, RagPipeline, RagSource
 from .vector_store_in_memory import InMemoryVectorStore, SearchResult
 
 __all__ = [
@@ -26,6 +27,9 @@ __all__ = [
     "ContextBuilder",
     "Document",
     "InMemoryVectorStore",
+    "RagAnswer",
+    "RagPipeline",
+    "RagSource",
     "RetrievedChunk",
     "RetrievedContext",
     "SearchResult",

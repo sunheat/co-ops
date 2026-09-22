@@ -1,13 +1,16 @@
 """Universal OpenAI-compatible LLM client."""
 
 import atexit
+import os
 import threading
+from collections.abc import Mapping
 from math import isfinite
 
 import httpx
 
 from ._http import post_json_with_retries
-from .errors import LLMError
+from .config import load_settings
+from .errors import ConfigError, LLMError
 from .schemas import ChatChoice, ChatMessage, ChatResponse, LLMResponse
 from .usage import (
     Usage,
@@ -16,6 +19,13 @@ from .usage import (
     append_usage_entry,
     estimate_cost_usd,
 )
+
+DEFAULT_CHAT_MODELS: dict[str, str] = {
+    "openai": "gpt-4o-mini",
+    "gemini": "gemini-flash-latest",
+    "deepseek": "deepseek-chat",
+    "local": "qwen2.5",  # Ollama default; other local servers vary
+}
 
 
 class LLMClient:
@@ -257,6 +267,59 @@ class LLMClient:
     def __exit__(self, exc_type, exc_val, exc_tb):
         self.close()
         return False
+
+
+def chat_client_from_env(
+    env: Mapping[str, str] | None = None,
+) -> tuple[LLMClient, str]:
+    """
+    Build a chat client and model name from environment settings.
+
+    Provider resolution: LLM_PROVIDER, then "openai".
+    Model resolution: LLM_MODEL, then a built-in default per provider, then the
+    Azure OpenAI deployment name.
+
+    Example:
+        client, model = chat_client_from_env()
+        with client:
+            response = client.chat(model=model, messages=[{"role": "user", "content": "Hi"}])
+        print(response.content)
+    """
+    if env is None:
+        env = os.environ
+
+    settings = load_settings(env)
+    provider = (env.get("LLM_PROVIDER") or "openai").strip().lower()
+
+    config = settings.get(provider)
+    if not config.is_configured:
+        raise ConfigError(
+            f"Provider '{provider}' is not configured; "
+            "set its API key / base URL in the environment (see .env.example)"
+        )
+
+    model = (env.get("LLM_MODEL") or DEFAULT_CHAT_MODELS.get(provider, "")).strip()
+    if not model:
+        # Azure v1 API: the model field carries the deployment name.
+        model = (config.deployment or "").strip()
+    if not model:
+        raise ConfigError(
+            f"No default chat model for provider '{provider}'; "
+            "set LLM_MODEL in the environment (see .env.example)"
+        )
+
+    client = LLMClient(
+        api_key=config.api_key,
+        base_url=config.endpoint,
+        timeout=settings.timeout,
+        provider=provider,
+        max_retries=settings.max_retries,
+        retry_base_delay=settings.retry_base_delay,
+        usage_logger=(
+            UsageLogger(settings.usage_log_path) if settings.usage_log_path else None
+        ),
+    )
+    return client, model
 
 
 _default_router = None
