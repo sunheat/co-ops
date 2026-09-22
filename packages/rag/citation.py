@@ -71,14 +71,13 @@ def validate_citations(
     seen_chunk_ids: set[str] = set()
 
     for citation in citations:
-        if (
-            known_paths.get(citation.chunk_id) == citation.source_path
-            and citation.chunk_id not in seen_chunk_ids
-        ):
+        if known_paths.get(citation.chunk_id) != citation.source_path:
+            invalid.append(citation)
+        elif citation.chunk_id in seen_chunk_ids:
+            continue
+        else:
             valid.append(citation)
             seen_chunk_ids.add(citation.chunk_id)
-        else:
-            invalid.append(citation)
 
     return valid, invalid
 

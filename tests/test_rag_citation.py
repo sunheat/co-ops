@@ -83,22 +83,21 @@ def test_validate_citations_accepts_citations_grounded_in_retrieval():
 
 
 def test_validate_citations_rejects_fabricated_and_mismatched_sources():
-    """Unknown chunk ids, wrong paths, and duplicates are all rejected."""
+    """Unknown chunk ids and wrong paths are rejected, but exact duplicates are skipped."""
     retrieved = [make_chunk("chunk-margin", MARGIN_PATH, "Margin content")]
 
     valid, invalid = validate_citations(
         [
             make_citation("data/fabricated.md", "chunk-ghost"),
+            make_citation(MARGIN_PATH, "chunk-margin"),
+            make_citation(MARGIN_PATH, "chunk-margin"),
             make_citation(RUNBOOK_PATH, "chunk-margin"),
-            make_citation(MARGIN_PATH, "chunk-margin"),
-            make_citation(MARGIN_PATH, "chunk-margin"),
         ],
         retrieved,
     )
 
     assert valid == [make_citation(MARGIN_PATH, "chunk-margin")]
-    assert [source.chunk_id for source in invalid] == [
-        "chunk-ghost",
-        "chunk-margin",
-        "chunk-margin",
+    assert invalid == [
+        make_citation("data/fabricated.md", "chunk-ghost"),
+        make_citation(RUNBOOK_PATH, "chunk-margin"),
     ]
