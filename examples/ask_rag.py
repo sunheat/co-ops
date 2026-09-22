@@ -51,10 +51,17 @@ def main() -> None:
     print(f"question:  {question}")
 
     print(f"\nAnswer:\n{answer.answer}")
+    if answer.confidence is not None:
+        print(f"Confidence: {answer.confidence}")
 
     print("\nSources:")
     for source in answer.sources:
         print(f"  {source.source_path} ({source.chunk_id})")
+
+    if answer.invalid_sources:
+        print("\nRejected citations (not grounded in retrieved chunks):")
+        for source in answer.invalid_sources:
+            print(f"  {source.source_path} ({source.chunk_id})")
 
     print("\nRetrieved chunks:")
     for rank, result in enumerate(answer.retrieved, start=1):

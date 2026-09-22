@@ -9,6 +9,12 @@ from packages.llm import EmbeddingClient, LLMClient, Usage
 from packages.prompt import ContextBlock, MessageBuilder
 
 from .chunkers import Chunk
+from .citation import (
+    CitedSource,
+    cited_answer_output_instruction,
+    parse_cited_answer,
+    validate_citations,
+)
 from .vector_store_in_memory import DEFAULT_TOP_K, InMemoryVectorStore, SearchResult
 
 EMBED_BATCH_SIZE = 100  # Gemini rejects embedding batches above 100 inputs
@@ -16,13 +22,9 @@ DEFAULT_TEMPERATURE = 0.2  # grounded answers want little sampling
 
 SYSTEM_PROMPT = (
     "You are an enterprise support assistant. Answer the question using only "
-    "the provided context, and name the source path behind every claim. If the "
-    "context does not answer the question, say so instead of guessing."
-)
-
-OUTPUT_INSTRUCTION = (
-    "Answer in one short paragraph, then list the source paths you used under "
-    "a 'Sources:' line."
+    "the provided context, and cite the source path and chunk id behind every "
+    "claim. If the context does not answer the question, say so instead of "
+    "guessing."
 )
 
 
@@ -36,11 +38,17 @@ class RagSource:
 
 @dataclass(frozen=True)
 class RagAnswer:
-    """One generated answer with the evidence it was built from."""
+    """One generated answer with the citations that survived validation.
+
+    ``sources`` holds only citations grounded in the retrieved chunks;
+    ``invalid_sources`` holds model citations that failed validation.
+    """
 
     answer: str
     sources: list[RagSource]
+    invalid_sources: list[RagSource]
     retrieved: list[SearchResult]
+    confidence: str | None = None
     usage: Usage | None = None
     latency_ms: float | None = None
 
@@ -103,29 +111,37 @@ class RagPipeline:
             system=SYSTEM_PROMPT,
             context=[
                 ContextBlock(
-                    label=result.chunk.source_path,
+                    label=f"{result.chunk.source_path} (chunk_id: {result.chunk.id})",
                     content=result.chunk.content,
                 )
                 for result in retrieved
             ],
             task=question,
-            output_instruction=OUTPUT_INSTRUCTION,
+            output_instruction=cited_answer_output_instruction(),
         )
         response = self._llm_client.chat(
             model=self._llm_model,
             messages=messages,
             temperature=self._temperature,
+            response_format="json",
         )
 
+        cited = parse_cited_answer(response.content)
+        valid, invalid = validate_citations(
+            cited.sources, [result.chunk for result in retrieved]
+        )
+
+        def to_source(citation: CitedSource) -> RagSource:
+            return RagSource(
+                source_path=citation.source_path, chunk_id=citation.chunk_id
+            )
+
         return RagAnswer(
-            answer=response.content,
-            sources=[
-                RagSource(
-                    source_path=result.chunk.source_path, chunk_id=result.chunk.id
-                )
-                for result in retrieved
-            ],
+            answer=cited.answer,
+            sources=[to_source(citation) for citation in valid],
+            invalid_sources=[to_source(citation) for citation in invalid],
             retrieved=retrieved,
+            confidence=cited.confidence,
             usage=response.usage,
             latency_ms=response.latency_ms,
         )

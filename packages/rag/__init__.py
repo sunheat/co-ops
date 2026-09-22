@@ -10,6 +10,13 @@ from .chunkers import (
     chunk_documents,
     chunk_statistics,
 )
+from .citation import (
+    CitedAnswer,
+    CitedSource,
+    cited_answer_output_instruction,
+    parse_cited_answer,
+    validate_citations,
+)
 from .context import BuiltContext, ContextBuilder, RetrievedChunk, RetrievedContext
 from .loaders import (
     Document,
@@ -23,6 +30,8 @@ from .vector_store_in_memory import InMemoryVectorStore, SearchResult
 
 __all__ = [
     "BuiltContext",
+    "CitedAnswer",
+    "CitedSource",
     "Chunk",
     "ContextBuilder",
     "Document",
@@ -37,7 +46,10 @@ __all__ = [
     "chunk_document",
     "chunk_documents",
     "chunk_statistics",
+    "cited_answer_output_instruction",
     "load_code_files",
     "load_markdown_docs",
     "load_text_docs",
+    "parse_cited_answer",
+    "validate_citations",
 ]
