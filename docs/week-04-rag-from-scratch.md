@@ -17,14 +17,15 @@ is now real corpus retrieval instead of the mocked chunks used in Phase 1.
 | 5 | `packages/rag/rag_pipeline.py`, `examples/ask_rag.py` | Done |
 | 6 | `packages/rag/citation.py`, structured cited answers | Done |
 
-The acceptance question runs end to end: `examples/ask_rag.py
-"Where is margin calculated?"` returns an answer, validated sources,
-retrieved chunks with scores, token usage, and latency. Verification runs for
-this report are recorded in the failure-case section below.
+The acceptance question ran end to end with paced embedding batches:
+`"Where is margin calculated?"` produced an answer, validated sources,
+retrieved chunks with scores, token usage, and latency. The default
+`examples/ask_rag.py` run fails under the free-tier quota used for this
+verification; see the failure-case and acceptance sections below.
 
 ## 1. What are the RAG pipeline steps?
 
-The pipeline is eight explicit steps, each with its own module:
+The pipeline follows these stages across its components:
 
 ```text
 load documents -> chunk -> embed chunks -> store vectors
@@ -44,8 +45,8 @@ load documents -> chunk -> embed chunks -> store vectors
    `chunk_index` onto every `Chunk`. The default configuration produces 114
    chunks from 82,187 source characters.
 3. **Embed chunks.** `RagPipeline.index()` batches chunk contents through
-   `EmbeddingClient` (100 inputs per request) and skips nothing: index
-   building is all-or-nothing per run.
+   `EmbeddingClient` (up to 100 inputs per request). A failed batch stops
+   indexing, but chunks from earlier batches remain in the in-memory store.
 4. **Store vectors.** `InMemoryVectorStore` unit-normalizes each vector on
    insert and keeps `(chunk, vector)` pairs in a list. There is no vector
    database, no persistence, and no numeric-library dependency; the store
@@ -81,15 +82,18 @@ chat model generates new text token by token.
   and returns a generated message. The repository keeps two clients
   (`EmbeddingClient`, `LLMClient`) instead of overloading one, because
   request shapes, response contracts, and usage fields differ.
-- **Determinism.** Embeddings are a pure function of the input: the same
-  text always produces the same vector, which is what makes similarity
-  search stable. Chat output is sampled; temperature and provider variance
-  mean the same prompt can produce different answers.
+- **Consistency.** Embeddings from the same model and version are intended
+  to be comparable, which makes similarity search possible. Changing the
+  model or its version can change vectors. Chat output is sampled;
+  temperature and provider variance mean the same prompt can produce
+  different answers.
 - **Usage and cost.** Embeddings bill input tokens only and carry no
   completion tokens; chat bills prompt plus completion tokens. Indexing
-  114 chunks costs one embedding call per input, while one question costs
-  one query embedding plus one chat call (observed: 1,443-1,939 total
-  tokens per answer, dominated by the retrieved context).
+  114 chunks require two batched embedding requests at the default batch
+  size of 100, or six requests at the paced batch size of 20 used here.
+  One question needs one query embedding request plus one chat request
+  (observed: 1,443-1,939 total chat tokens per answer, dominated by the
+  retrieved context).
 - **Coupling.** The two can, and here do, come from different providers:
   verification for this report used Gemini
   (`gemini-embedding-001`, 3072-dimension vectors) for embeddings and
@@ -111,19 +115,21 @@ Measured on the current 33-document corpus with the repository chunker:
 | 2000 / 400 | 61 | 93,387 |
 
 Source text totals 82,187 characters, so overlap alone inflates stored
-characters by roughly 23% at 400/80 and 14% at 1000/200.
+characters by roughly 23% at 400/80, 20% at 1000/200, and 14% at 2000/400.
 
-- **Smaller chunks** raise retrieval precision for narrow questions: a
-  400-character window is unlikely to mix two topics, so its vector stays
-  close to one subject. The costs are context fragmentation (the answer
-  often spans several windows, and only some of them make top-k), more
-  vectors to embed, and a larger share of near-duplicate neighbors from the
-  overlap.
+The table measures chunk counts and stored characters, not answer quality
+or retrieval accuracy across the three configurations. The effects below
+are expected trade-offs unless tied to the default-size probe runs.
+
+- **Smaller chunks** may improve retrieval precision for narrow questions:
+  a 400-character window is less likely to mix two topics. The costs are
+  context fragmentation (the answer often spans several windows, and only
+  some of them make top-k), more vectors to embed, and a larger share of
+  near-duplicate neighbors from the overlap.
 - **Larger chunks** keep more surrounding context per hit and reduce the
-  number of vectors, but each vector averages several topics, so similarity
-  scores flatten and ranking becomes less discriminative. They also spend
-  more prompt tokens: with the default size, five retrieved chunks already
-  cost around 1.4-1.9k prompt tokens per question.
+  number of vectors, but a vector representing several topics may rank
+  less precisely. They can also spend more prompt tokens. In the default-size
+  probe runs, the full chat requests used 1.4-1.9k total tokens per question.
 - **Overlap** protects statements that straddle a boundary, but it is
   stored and embedded twice and can crowd out diversity: in the
   "Which Java class calculates margin?" run, four of the five retrieved
@@ -268,5 +274,5 @@ shape.
   exact-token queries and duplicate-heavy top-k.
 - Week 7: query rewriting, reranking, citation validation v2, and
   insufficient-evidence refusal.
-- Week 8: baseline evaluation over the 30 seeded questions, index/batch
+- Week 8: baseline evaluation over the 36 seeded questions, index/batch
   handling for provider rate limits, and the API/UI demo.
