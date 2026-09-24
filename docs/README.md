@@ -7,3 +7,4 @@
 | [LLM Client Design Notes](llm-client-design-notes.md) | Design rationale and decisions behind `packages/llm` |
 | [LiteLLM Comparison](litellm-comparison.md) | How the local gateway compares with LiteLLM, and where each fits |
 | [Prompt Quality Benchmark](prompt-quality-benchmark.md) | Methodology and results of the prompt-style benchmark |
+| [Week 4: RAG from Scratch](week-04-rag-from-scratch.md) | Pipeline walkthrough, embedding vs chat models, chunk-size effects, citations, and observed failure cases |
